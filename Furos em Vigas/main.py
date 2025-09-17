@@ -2,10 +2,12 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
+from matplotlib.image import imread
 from dataclasses import dataclass
 import tkinter as tk
 from tkinter import ttk, messagebox
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import os
 
 @dataclass
 class DadosEntrada:
@@ -60,9 +62,17 @@ def calcular_reforco(dados: DadosEntrada) -> ResultadoCalculo:
     # Cálculo do braço de alavanca
     Z = dados.h - (dados.h1 + dados.h2) / 2
     
+    # Verificação para evitar divisão por zero
+    if Z <= 0:
+        raise ValueError(f"Braço de alavanca inválido (Z={Z:.2f}). Verifique se h1+h2 < h e se as dimensões estão corretas.")
+    
     # Esforços de cálculo
     Vd = dados.Vk * gamma_f
     Md = dados.Mk * gamma_f
+    
+    # Verificação para evitar divisão por zero no momento
+    if Md == 0:
+        raise ValueError("Momento fletor característico não pode ser zero.")
     
     # Cálculo das forças resultantes
     Rc = Rt = Md / Z
@@ -82,15 +92,31 @@ def calcular_reforco(dados: DadosEntrada) -> ResultadoCalculo:
     d1 = dados.h1 - dados.cobrimento  # Altura útil da parte superior (cm)
     d2 = dados.h2 - dados.cobrimento  # Altura útil da parte inferior (cm)
     
+    # Verificação para evitar alturas úteis inválidas
+    if d1 <= 0:
+        raise ValueError(f"Altura útil d1 inválida ({d1:.2f} cm). Verifique se h1 > cobrimento.")
+    if d2 <= 0:
+        raise ValueError(f"Altura útil d2 inválida ({d2:.2f} cm). Verifique se h2 > cobrimento.")
+    
     # Armadura longitudinal (parte superior)
     # Usando equações de equilíbrio para concreto armado (método simplificado)
     kmd1 = Md1 * 100 / (dados.bw * d1 * d1 * fcd)  # Momento em kN.cm
     if kmd1 > 0.45:  # Limite para domínio 3
         kmd1 = 0.45
     
+    # Verificação para evitar valores negativos na raiz quadrada
+    discriminante1 = 0.425 - kmd1
+    if discriminante1 < 0:
+        raise ValueError(f"Discriminante negativo no cálculo de kx1: {discriminante1:.4f}")
+    
     # Calcular a linha neutra e área de aço
-    kx1 = 1.25 - 1.917 * math.sqrt(0.425 - kmd1)
+    kx1 = 1.25 - 1.917 * math.sqrt(discriminante1)
     kz1 = 1 - 0.4 * kx1
+    
+    # Verificação para evitar divisão por zero
+    if kz1 <= 0:
+        raise ValueError(f"Braço de alavanca kz1 inválido ({kz1:.4f}). Verifique os parâmetros de cálculo.")
+    
     As1 = Md1 * 100 / (fyd * kz1 * d1)  # Área em cm²
     
     # Armadura longitudinal (parte inferior)
@@ -98,8 +124,17 @@ def calcular_reforco(dados: DadosEntrada) -> ResultadoCalculo:
     if kmd2 > 0.45:
         kmd2 = 0.45
     
-    kx2 = 1.25 - 1.917 * math.sqrt(0.425 - kmd2)
+    # Verificação para evitar valores negativos na raiz quadrada
+    discriminante2 = 0.425 - kmd2
+    if discriminante2 < 0:
+        raise ValueError(f"Discriminante negativo no cálculo de kx2: {discriminante2:.4f}")
+    
+    kx2 = 1.25 - 1.917 * math.sqrt(discriminante2)
     kz2 = 1 - 0.4 * kx2
+    
+    # Verificação para evitar divisão por zero
+    if kz2 <= 0:
+        raise ValueError(f"Braço de alavanca kz2 inválido ({kz2:.4f}). Verifique os parâmetros de cálculo.")
     As2 = Md2 * 100 / (fyd * kz2 * d2)
     
     # Armadura transversal (estribos)
@@ -120,8 +155,22 @@ def calcular_reforco(dados: DadosEntrada) -> ResultadoCalculo:
     # Função para calcular bitolas
     def calcular_bitolas(area_aco, max_barras=8):
         resultados = []
+        
+        # Verificação para evitar cálculos com área zero ou negativa
+        if area_aco <= 0:
+            return [{
+                'bitola': 5.0,  # mm
+                'quantidade': 0,
+                'area_total': 0.0
+            }]
+        
         for bitola in bitolas_disponiveis:
             area_bitola = math.pi * (bitola ** 2) / 4
+            
+            # Verificação para evitar divisão por zero
+            if area_bitola <= 0:
+                continue
+                
             num_barras = math.ceil(area_aco / area_bitola)
             if num_barras <= max_barras:
                 resultados.append({
@@ -129,6 +178,15 @@ def calcular_reforco(dados: DadosEntrada) -> ResultadoCalculo:
                     'quantidade': num_barras,
                     'area_total': num_barras * area_bitola
                 })
+        
+        # Se não encontrou resultados válidos, retorna configuração mínima
+        if not resultados:
+            return [{
+                'bitola': 5.0,  # mm
+                'quantidade': 1,
+                'area_total': math.pi * (0.5 ** 2) / 4
+            }]
+            
         return sorted(resultados, key=lambda x: abs(x['area_total'] - area_aco))[:3]
     
     # Calcular bitolas para As1, As2 e Assus
@@ -139,6 +197,16 @@ def calcular_reforco(dados: DadosEntrada) -> ResultadoCalculo:
     # Calcular bitolas e espaçamentos para estribos
     def calcular_bitolas_estribo(area_aco_por_metro, num_ramos=2):
         resultados = []
+        
+        # Verificação para evitar divisão por zero
+        if area_aco_por_metro <= 0:
+            # Se não há necessidade de armadura transversal, retorna configuração mínima
+            return [{
+                'bitola': 5.0,  # mm
+                'espacamento': 20.0,  # cm
+                'num_ramos': num_ramos
+            }]
+        
         for bitola in bitolas_disponiveis[:5]:  # Limitando a 12.5mm
             area_bitola = math.pi * (bitola ** 2) / 4
             # Calcular espaçamento para 2 ramos
@@ -149,6 +217,15 @@ def calcular_reforco(dados: DadosEntrada) -> ResultadoCalculo:
                     'espacamento': round(espacamento, 1),  # cm
                     'num_ramos': num_ramos
                 })
+        
+        # Se não encontrou resultados válidos, retorna configuração mínima
+        if not resultados:
+            return [{
+                'bitola': 5.0,  # mm
+                'espacamento': 20.0,  # cm
+                'num_ramos': num_ramos
+            }]
+            
         return sorted(resultados, key=lambda x: abs(20 - x['espacamento']))[:2]  # Preferência por ~20cm
     
     bitolas_asw1 = calcular_bitolas_estribo(Asw1)
@@ -175,182 +252,149 @@ def calcular_reforco(dados: DadosEntrada) -> ResultadoCalculo:
     )
 
 def gerar_desenho(dados: DadosEntrada, resultado: ResultadoCalculo):
-    # Criar uma figura para visualizar a viga e seus esforços
-    fig, ax = plt.subplots(figsize=(10, 6))
+    # Criar uma figura para visualizar a viga usando a imagem de referência
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 8))
     
-    # Dimensões para desenho
-    escala = 1.5
-    margin = 20
-    viga_width = dados.bw * escala
-    viga_height = dados.h * escala
-    abertura_width = dados.m * escala
-    abertura_height = (dados.h - dados.h1 - dados.h2) * escala
+    # Carregar e exibir a imagem de referência
+    try:
+        img_path = os.path.join(os.path.dirname(__file__), 'img', 'detfuro.png')
+        if os.path.exists(img_path):
+            img = imread(img_path)
+            ax1.imshow(img)
+            ax1.set_title("Detalhamento do Furo - Referência", fontsize=12, fontweight='bold')
+            ax1.axis('off')
+        else:
+            ax1.text(0.5, 0.5, "Imagem detfuro.png\nnão encontrada", 
+                    ha='center', va='center', transform=ax1.transAxes, fontsize=12)
+            ax1.set_title("Detalhamento do Furo", fontsize=12, fontweight='bold')
+    except Exception as e:
+        ax1.text(0.5, 0.5, f"Erro ao carregar imagem:\n{str(e)}", 
+                ha='center', va='center', transform=ax1.transAxes, fontsize=10)
+        ax1.set_title("Detalhamento do Furo", fontsize=12, fontweight='bold')
     
-    # Posição da viga
-    viga_x = margin
-    viga_y = margin
+    # Painel de resultados e especificações
+    ax2.axis('off')
     
-    # Desenhar a viga
-    viga = Rectangle((viga_x, viga_y), viga_width, viga_height, 
-                     edgecolor='black', facecolor='lightgray', linewidth=2)
-    ax.add_patch(viga)
+    # Título
+    ax2.text(0.5, 0.95, "DIMENSIONAMENTO DO REFORÇO", 
+             ha='center', va='top', transform=ax2.transAxes, 
+             fontsize=14, fontweight='bold')
     
-    # Posição da abertura
-    abertura_x = viga_x + (viga_width - abertura_width) / 2
-    abertura_y = viga_y + dados.h2 * escala
+    # Dados de entrada
+    y_pos = 0.85
+    ax2.text(0.05, y_pos, "DADOS DE ENTRADA:", 
+             transform=ax2.transAxes, fontsize=12, fontweight='bold', color='blue')
+    y_pos -= 0.05
     
-    # Desenhar a abertura
-    abertura = Rectangle((abertura_x, abertura_y), abertura_width, abertura_height, 
-                         edgecolor='black', facecolor='white', linewidth=2)
-    ax.add_patch(abertura)
+    entrada_text = [
+        f"Altura total da viga (h): {dados.h} cm",
+        f"Altura superior (h₁): {dados.h1} cm", 
+        f"Altura inferior (h₂): {dados.h2} cm",
+        f"Largura da abertura (m): {dados.m} cm",
+        f"Largura da viga (bw): {dados.bw} cm",
+        f"Força cortante (Vk): {dados.Vk} tf",
+        f"Momento fletor (Mk): {dados.Mk} tf.m",
+        f"fck: {dados.fck} MPa",
+        f"fyk: {dados.fyk} MPa"
+    ]
     
-    # Adicionar cotas
-    # Altura total
-    ax.arrow(viga_x - 10, viga_y, 0, viga_height, 
-             head_width=2, head_length=4, fc='black', ec='black', length_includes_head=True)
-    ax.arrow(viga_x - 10, viga_y + viga_height, 0, -viga_height, 
-             head_width=2, head_length=4, fc='black', ec='black', length_includes_head=True)
-    ax.text(viga_x - 20, viga_y + viga_height/2, f"h = {dados.h} cm", 
-            ha='right', va='center', fontsize=10)
+    for texto in entrada_text:
+        ax2.text(0.05, y_pos, texto, transform=ax2.transAxes, fontsize=10)
+        y_pos -= 0.04
     
-    # Altura h1
-    ax.arrow(viga_x - 5, abertura_y + abertura_height, 0, dados.h1 * escala, 
-             head_width=1, head_length=2, fc='blue', ec='blue', length_includes_head=True)
-    ax.arrow(viga_x - 5, viga_y + viga_height, 0, -(dados.h1 * escala), 
-             head_width=1, head_length=2, fc='blue', ec='blue', length_includes_head=True)
-    ax.text(viga_x - 15, viga_y + viga_height - dados.h1 * escala/2, f"h1 = {dados.h1} cm", 
-            ha='right', va='center', fontsize=9, color='blue')
+    # Resultados dos cálculos
+    y_pos -= 0.03
+    ax2.text(0.05, y_pos, "RESULTADOS DOS CÁLCULOS:", 
+             transform=ax2.transAxes, fontsize=12, fontweight='bold', color='red')
+    y_pos -= 0.05
     
-    # Altura h2
-    ax.arrow(viga_x - 5, viga_y, 0, dados.h2 * escala, 
-             head_width=1, head_length=2, fc='blue', ec='blue', length_includes_head=True)
-    ax.arrow(viga_x - 5, abertura_y, 0, -(dados.h2 * escala), 
-             head_width=1, head_length=2, fc='blue', ec='blue', length_includes_head=True)
-    ax.text(viga_x - 15, viga_y + dados.h2 * escala/2, f"h2 = {dados.h2} cm", 
-            ha='right', va='center', fontsize=9, color='blue')
+    resultados_text = [
+        f"Braço de alavanca (Z): {resultado.Z:.2f} cm",
+        f"Força de compressão (Rc): {resultado.Rc:.2f} tf",
+        f"Força de tração (Rt): {resultado.Rt:.2f} tf",
+        f"Cortante superior (Vd₁): {resultado.Vd1:.2f} tf",
+        f"Cortante inferior (Vd₂): {resultado.Vd2:.2f} tf",
+        f"Momento superior (Md₁): {resultado.Md1:.2f} tf.m",
+        f"Momento inferior (Md₂): {resultado.Md2:.2f} tf.m"
+    ]
     
-    # Largura da abertura
-    ax.arrow(abertura_x, abertura_y - 5, abertura_width, 0, 
-             head_width=1, head_length=2, fc='red', ec='red', length_includes_head=True)
-    ax.arrow(abertura_x + abertura_width, abertura_y - 5, -abertura_width, 0, 
-             head_width=1, head_length=2, fc='red', ec='red', length_includes_head=True)
-    ax.text(abertura_x + abertura_width/2, abertura_y - 15, f"m = {dados.m} cm", 
-            ha='center', va='top', fontsize=9, color='red')
+    for texto in resultados_text:
+        ax2.text(0.05, y_pos, texto, transform=ax2.transAxes, fontsize=10)
+        y_pos -= 0.04
     
-    # Esforços
-    # Posição para o texto
-    text_x = viga_x + viga_width + 20
-    text_y = viga_y + viga_height
+    # Armaduras necessárias
+    y_pos -= 0.03
+    ax2.text(0.05, y_pos, "ARMADURAS NECESSÁRIAS:", 
+             transform=ax2.transAxes, fontsize=12, fontweight='bold', color='green')
+    y_pos -= 0.05
     
-    # Adicionar texto com os resultados
-    ax.text(text_x, text_y, "RESULTADOS:", fontsize=12, fontweight='bold')
-    text_y -= 15
-    
-    ax.text(text_x, text_y, f"Z = {resultado.Z:.2f} cm", fontsize=10)
-    text_y -= 12
-    ax.text(text_x, text_y, f"Rc = Rt = {resultado.Rc:.2f} tf", fontsize=10)
-    text_y -= 12
-    ax.text(text_x, text_y, f"Vd1 = {resultado.Vd1:.2f} tf", fontsize=10)
-    text_y -= 12
-    ax.text(text_x, text_y, f"Vd2 = {resultado.Vd2:.2f} tf", fontsize=10)
-    text_y -= 12
-    ax.text(text_x, text_y, f"Md1 = {resultado.Md1:.2f} tf.m", fontsize=10)
-    text_y -= 12
-    ax.text(text_x, text_y, f"Md2 = {resultado.Md2:.2f} tf.m", fontsize=10)
-    text_y -= 12
-    
-    # Armaduras
-    ax.text(text_x, text_y, "ARMADURAS:", fontsize=12, fontweight='bold')
-    text_y -= 15
-    
-    ax.text(text_x, text_y, f"As1 = {resultado.As1:.2f} cm²", fontsize=10)
+    # As1 - Armadura longitudinal superior
+    ax2.text(0.05, y_pos, f"As₁ = {resultado.As1:.2f} cm²", 
+             transform=ax2.transAxes, fontsize=10, fontweight='bold')
     if resultado.bitolas_as1:
         bitola = resultado.bitolas_as1[0]
-        ax.text(text_x + 150, text_y, 
-                f"{bitola['quantidade']} Ø {bitola['bitola']:.1f} mm", fontsize=10, color='blue')
-    text_y -= 12
+        ax2.text(0.45, y_pos, 
+                f"→ {bitola['quantidade']} Ø {bitola['bitola']:.1f} mm", 
+                transform=ax2.transAxes, fontsize=10, color='blue')
+    y_pos -= 0.04
     
-    ax.text(text_x, text_y, f"As2 = {resultado.As2:.2f} cm²", fontsize=10)
+    # As2 - Armadura longitudinal inferior  
+    ax2.text(0.05, y_pos, f"As₂ = {resultado.As2:.2f} cm²", 
+             transform=ax2.transAxes, fontsize=10, fontweight='bold')
     if resultado.bitolas_as2:
         bitola = resultado.bitolas_as2[0]
-        ax.text(text_x + 150, text_y, 
-                f"{bitola['quantidade']} Ø {bitola['bitola']:.1f} mm", fontsize=10, color='blue')
-    text_y -= 12
+        ax2.text(0.45, y_pos, 
+                f"→ {bitola['quantidade']} Ø {bitola['bitola']:.1f} mm", 
+                transform=ax2.transAxes, fontsize=10, color='blue')
+    y_pos -= 0.04
     
-    ax.text(text_x, text_y, f"Asw1 = {resultado.Asw1:.2f} cm²/m", fontsize=10)
+    # Asw1 - Estribos superiores
+    ax2.text(0.05, y_pos, f"Asw₁ = {resultado.Asw1:.2f} cm²/m", 
+             transform=ax2.transAxes, fontsize=10, fontweight='bold')
     if resultado.bitolas_asw1:
         bitola = resultado.bitolas_asw1[0]
-        ax.text(text_x + 150, text_y, 
-                f"Ø {bitola['bitola']:.1f} c/{bitola['espacamento']:.1f} cm", fontsize=10, color='blue')
-    text_y -= 12
+        ax2.text(0.45, y_pos, 
+                f"→ Ø {bitola['bitola']:.1f} c/{bitola['espacamento']:.1f} cm", 
+                transform=ax2.transAxes, fontsize=10, color='blue')
+    y_pos -= 0.04
     
-    ax.text(text_x, text_y, f"Asw2 = {resultado.Asw2:.2f} cm²/m", fontsize=10)
+    # Asw2 - Estribos inferiores
+    ax2.text(0.05, y_pos, f"Asw₂ = {resultado.Asw2:.2f} cm²/m", 
+             transform=ax2.transAxes, fontsize=10, fontweight='bold')
     if resultado.bitolas_asw2:
         bitola = resultado.bitolas_asw2[0]
-        ax.text(text_x + 150, text_y, 
-                f"Ø {bitola['bitola']:.1f} c/{bitola['espacamento']:.1f} cm", fontsize=10, color='blue')
-    text_y -= 12
+        ax2.text(0.45, y_pos, 
+                f"→ Ø {bitola['bitola']:.1f} c/{bitola['espacamento']:.1f} cm", 
+                transform=ax2.transAxes, fontsize=10, color='blue')
+    y_pos -= 0.04
     
-    ax.text(text_x, text_y, f"Assus = {resultado.Assus:.2f} cm²", fontsize=10)
+    # Assus - Armadura de suspensão
+    ax2.text(0.05, y_pos, f"Assus = {resultado.Assus:.2f} cm²", 
+             transform=ax2.transAxes, fontsize=10, fontweight='bold')
     if resultado.bitolas_assus:
         bitola = resultado.bitolas_assus[0]
-        ax.text(text_x + 150, text_y, 
-                f"{bitola['quantidade']} Ø {bitola['bitola']:.1f} mm", fontsize=10, color='blue')
+        ax2.text(0.45, y_pos, 
+                f"→ {bitola['quantidade']} Ø {bitola['bitola']:.1f} mm", 
+                transform=ax2.transAxes, fontsize=10, color='blue')
     
-    # Desenhar as armaduras no desenho
-    # Armadura longitudinal superior
-    y_as1 = viga_y + viga_height - dados.cobrimento * escala
-    plt.plot([viga_x + 5, viga_x + viga_width - 5], [y_as1, y_as1], 'bo-', linewidth=2)
+    # Observações técnicas
+    y_pos -= 0.08
+    ax2.text(0.05, y_pos, "OBSERVAÇÕES:", 
+             transform=ax2.transAxes, fontsize=11, fontweight='bold', color='purple')
+    y_pos -= 0.04
     
-    # Armadura longitudinal inferior
-    y_as2 = viga_y + dados.cobrimento * escala
-    plt.plot([viga_x + 5, viga_x + viga_width - 5], [y_as2, y_as2], 'bo-', linewidth=2)
+    obs_text = [
+        "• Armaduras conforme NBR 6118:2014",
+        "• Cobrimento mínimo considerado: 3,0 cm",
+        "• Espaçamentos entre 5 e 30 cm",
+        "• Verificar ancoragem das barras"
+    ]
     
-    # Estribos na parte superior
-    if resultado.bitolas_asw1:
-        espacamento = resultado.espacamento_asw1 * escala
-        for x in np.arange(viga_x + 5, viga_x + viga_width - 5, espacamento):
-            plt.plot([x, x], 
-                     [abertura_y + abertura_height, viga_y + viga_height - 5], 
-                     'g-', linewidth=1)
+    for obs in obs_text:
+        ax2.text(0.05, y_pos, obs, transform=ax2.transAxes, fontsize=9)
+        y_pos -= 0.03
     
-    # Estribos na parte inferior
-    if resultado.bitolas_asw2:
-        espacamento = resultado.espacamento_asw2 * escala
-        for x in np.arange(viga_x + 5, viga_x + viga_width - 5, espacamento):
-            plt.plot([x, x], 
-                     [viga_y + 5, abertura_y], 
-                     'g-', linewidth=1)
-    
-    # Armadura de suspensão
-    if resultado.bitolas_assus:
-        plt.plot([abertura_x - 5, abertura_x - 5], 
-                 [abertura_y - 5, abertura_y + abertura_height + 5], 
-                 'r-', linewidth=2)
-        plt.plot([abertura_x + abertura_width + 5, abertura_x + abertura_width + 5], 
-                 [abertura_y - 5, abertura_y + abertura_height + 5], 
-                 'r-', linewidth=2)
-    
-    # Forças resultantes
-    # Rc
-    plt.arrow(abertura_x + abertura_width/2, abertura_y + abertura_height + 10, 
-              -20, 0, head_width=3, head_length=5, fc='blue', ec='blue')
-    plt.text(abertura_x + abertura_width/2 - 25, abertura_y + abertura_height + 15, 
-             "Rc", color='blue', fontsize=10)
-    
-    # Rt
-    plt.arrow(abertura_x + abertura_width/2, abertura_y - 10, 
-              20, 0, head_width=3, head_length=5, fc='blue', ec='blue')
-    plt.text(abertura_x + abertura_width/2 + 25, abertura_y - 15, 
-             "Rt", color='blue', fontsize=10)
-    
-    # Configurações do gráfico
-    ax.set_aspect('equal')
-    ax.set_xlim(0, viga_x + viga_width + 250)
-    ax.set_ylim(0, viga_y + viga_height + 50)
-    ax.axis('off')
-    plt.title("Dimensionamento do Reforço")
-    
+    plt.tight_layout()
     return fig
 
 class AplicacaoReforcoViga:
@@ -427,10 +471,10 @@ class AplicacaoReforcoViga:
         # Labels para os resultados
         self.labels_resultados = {}
         
-        # Primeira coluna
+        # Primeira coluna - Esforços e dimensões
         col1_labels = [
-            "Z [cm]:", "Rc = Rt [tf]:", "Vd1 [tf]:", "Vd2 [tf]:",
-            "Md1 [tf.m]:", "Md2 [tf.m]:"
+            "Z [cm]:", "Rc = Rt [tf]:", "Vd₁ [tf]:", "Vd₂ [tf]:",
+            "Md₁ [tf.m]:", "Md₂ [tf.m]:"
         ]
         
         for i, label in enumerate(col1_labels):
@@ -440,10 +484,10 @@ class AplicacaoReforcoViga:
             lbl.grid(row=i, column=1, sticky="w", padx=5, pady=2)
             self.labels_resultados[label] = lbl
         
-        # Segunda coluna
+        # Segunda coluna - Armaduras
         col2_labels = [
-            "As1 [cm²]:", "As2 [cm²]:", "Asw1 [cm²/m]:", 
-            "Asw2 [cm²/m]:", "Assus [cm²]:"
+            "As₁ [cm²]:", "As₂ [cm²]:", "Asw₁ [cm²/m]:", 
+            "Asw₂ [cm²/m]:", "Assus [cm²]:"
         ]
         
         for i, label in enumerate(col2_labels):
@@ -453,10 +497,10 @@ class AplicacaoReforcoViga:
             lbl.grid(row=i, column=3, sticky="w", padx=5, pady=2)
             self.labels_resultados[label] = lbl
         
-        # Terceira coluna - Detalhamento
+        # Terceira coluna - Detalhamento das armaduras
         col3_labels = [
-            "Detalhamento As1:", "Detalhamento As2:", "Detalhamento Asw1:", 
-            "Detalhamento Asw2:", "Detalhamento Assus:"
+            "Detalhamento As₁:", "Detalhamento As₂:", "Detalhamento Asw₁:", 
+            "Detalhamento Asw₂:", "Detalhamento Assus:"
         ]
         
         for i, label in enumerate(col3_labels):
@@ -530,33 +574,33 @@ class AplicacaoReforcoViga:
         mapeamento = {
             "Z [cm]:": f"{resultado.Z:.2f}",
             "Rc = Rt [tf]:": f"{resultado.Rc:.2f}",
-            "Vd1 [tf]:": f"{resultado.Vd1:.2f}",
-            "Vd2 [tf]:": f"{resultado.Vd2:.2f}",
-            "Md1 [tf.m]:": f"{resultado.Md1:.2f}",
-            "Md2 [tf.m]:": f"{resultado.Md2:.2f}",
-            "As1 [cm²]:": f"{resultado.As1:.2f}",
-            "As2 [cm²]:": f"{resultado.As2:.2f}",
-            "Asw1 [cm²/m]:": f"{resultado.Asw1:.2f}",
-            "Asw2 [cm²/m]:": f"{resultado.Asw2:.2f}",
+            "Vd₁ [tf]:": f"{resultado.Vd1:.2f}",
+            "Vd₂ [tf]:": f"{resultado.Vd2:.2f}",
+            "Md₁ [tf.m]:": f"{resultado.Md1:.2f}",
+            "Md₂ [tf.m]:": f"{resultado.Md2:.2f}",
+            "As₁ [cm²]:": f"{resultado.As1:.2f}",
+            "As₂ [cm²]:": f"{resultado.As2:.2f}",
+            "Asw₁ [cm²/m]:": f"{resultado.Asw1:.2f}",
+            "Asw₂ [cm²/m]:": f"{resultado.Asw2:.2f}",
             "Assus [cm²]:": f"{resultado.Assus:.2f}"
         }
         
-        # Detalhamento
+        # Detalhamento das armaduras
         if resultado.bitolas_as1:
             bitola = resultado.bitolas_as1[0]
-            mapeamento["Detalhamento As1:"] = f"{bitola['quantidade']} Ø {bitola['bitola']:.1f} mm"
+            mapeamento["Detalhamento As₁:"] = f"{bitola['quantidade']} Ø {bitola['bitola']:.1f} mm"
         
         if resultado.bitolas_as2:
             bitola = resultado.bitolas_as2[0]
-            mapeamento["Detalhamento As2:"] = f"{bitola['quantidade']} Ø {bitola['bitola']:.1f} mm"
+            mapeamento["Detalhamento As₂:"] = f"{bitola['quantidade']} Ø {bitola['bitola']:.1f} mm"
         
         if resultado.bitolas_asw1:
             bitola = resultado.bitolas_asw1[0]
-            mapeamento["Detalhamento Asw1:"] = f"Ø {bitola['bitola']:.1f} c/{bitola['espacamento']:.1f} cm"
+            mapeamento["Detalhamento Asw₁:"] = f"Ø {bitola['bitola']:.1f} c/{bitola['espacamento']:.1f} cm"
         
         if resultado.bitolas_asw2:
             bitola = resultado.bitolas_asw2[0]
-            mapeamento["Detalhamento Asw2:"] = f"Ø {bitola['bitola']:.1f} c/{bitola['espacamento']:.1f} cm"
+            mapeamento["Detalhamento Asw₂:"] = f"Ø {bitola['bitola']:.1f} c/{bitola['espacamento']:.1f} cm"
         
         if resultado.bitolas_assus:
             bitola = resultado.bitolas_assus[0]
