@@ -140,6 +140,81 @@ def extrair_valores_por_posicao(linha_dados, mapa_colunas):
         return None
 
 
+def extrair_geometrias_vigas(linhas):
+    """
+    Extrai geometrias (B - largura) de todas as vigas no arquivo
+    Retorna dicionário: {ref_viga: largura_cm}
+    """
+    geometrias = {}
+    viga_atual = None
+
+    for linha in linhas:
+        if 'Viga=' in linha:
+            viga_atual = extrair_ref_viga(linha)
+
+        elif '/B=' in linha and '/H=' in linha and viga_atual:
+            match_b = re.search(r'/B=\s*([\d.]+)', linha)
+            if match_b:
+                b_m = float(match_b.group(1))
+                b_cm = b_m * 100.0
+                geometrias[viga_atual] = b_cm
+
+    return geometrias
+
+
+def extrair_reacoes_apoio(linhas):
+    """
+    Extrai relações de apoio entre vigas da seção REAC. APOIO
+    Retorna dicionário: {viga_apoio: [vigas_apoiadas]}
+    Considera apenas Morte=2 (apoio em viga)
+    """
+    reacoes = {}
+    viga_atual = None
+    procurar_reacoes = False
+
+    for linha in linhas:
+        if 'Viga=' in linha:
+            viga_atual = extrair_ref_viga(linha)
+            procurar_reacoes = False
+
+        elif 'REAC. APOIO' in linha and viga_atual:
+            procurar_reacoes = True
+
+        elif procurar_reacoes and viga_atual:
+            # Buscar linhas de dados de reações
+            # Formato: No.   Maximos   Minimos   Largura    DEPEV  Morte    Nome
+            #          1    10.024     7.647      0.70     0.14      2   V808
+
+            partes = linha.split()
+            if len(partes) >= 7:
+                try:
+                    # Verificar se primeira parte é número (No.)
+                    int(partes[0])
+
+                    # Índice 5 é Morte
+                    morte = int(partes[5])
+
+                    # Se Morte=2, é apoio em viga
+                    if morte == 2:
+                        # Índice 6 é Nome da viga de apoio
+                        nome_apoio = partes[6]
+
+                        # Se nome começa com V e tem número, é uma viga
+                        if nome_apoio.startswith('V') and any(c.isdigit() for c in nome_apoio):
+                            if nome_apoio not in reacoes:
+                                reacoes[nome_apoio] = []
+                            reacoes[nome_apoio].append(viga_atual)
+
+                except (ValueError, IndexError):
+                    pass
+
+            # Fim da seção de reações
+            if linha.strip() == '' or '===' in linha:
+                procurar_reacoes = False
+
+    return reacoes
+
+
 def processar_relger(caminho_arquivo):
     """
     Processa o arquivo RELGER.lst e extrai dados de armadura de suspensão
@@ -153,6 +228,10 @@ def processar_relger(caminho_arquivo):
     except Exception as e:
         print(f"\nErro ao ler arquivo: {e}")
         return None
+
+    # Extrair geometrias e reações de apoio PRIMEIRO
+    geometrias = extrair_geometrias_vigas(linhas)
+    reacoes_apoio = extrair_reacoes_apoio(linhas)
 
     viga_atual = None
     secao_atual = None
@@ -175,13 +254,27 @@ def processar_relger(caminho_arquivo):
                 dados = extrair_valores_por_posicao(linha, mapa_colunas)
 
                 if dados and dados['astrt'] != 0.0:
+                    # Determinar 'a' (largura da viga apoiada)
+                    a_cm = None
+                    viga_apoiada_nome = None
+
+                    if viga_atual in reacoes_apoio:
+                        # Pegamos a primeira viga apoiada (pode ter múltiplas)
+                        vigas_apoiadas = reacoes_apoio[viga_atual]
+                        if vigas_apoiadas:
+                            viga_apoiada_nome = vigas_apoiadas[0]
+                            if viga_apoiada_nome in geometrias:
+                                a_cm = geometrias[viga_apoiada_nome]
+
                     registro = {
                         'ref': viga_atual,
                         'secao': secao_atual,
                         'aswmin': dados['aswmin'],
                         'asw_ct': dados['asw_ct'],
                         'astrt': dados['astrt'],
-                        'assus': dados['assus']
+                        'assus': dados['assus'],
+                        'a_cm': a_cm,
+                        'viga_apoiada': viga_apoiada_nome
                     }
                     vigas_extraidas.append(registro)
 
@@ -224,19 +317,23 @@ def exibir_dados(dados):
         print("\nNenhuma viga com AsTrt <> 0 encontrada.")
         return
 
-    print("\n" + "="*80)
+    print("\n" + "="*100)
     print("VIGAS COM ARMADURA TRANSVERSAL DE TIRANTE (AsTrt <> 0)")
-    print("="*80)
-    print(f"{'Viga':<8} {'Secao':<10} {'Aswmin':<10} {'Asw[C+T]':<10} {'AsTrt':<10} {'AsSus':<10}")
-    print("-"*80)
+    print("="*100)
+    print(f"{'Viga':<8} {'Secao':<10} {'Aswmin':<10} {'Asw[C+T]':<10} {'AsTrt':<10} {'AsSus':<10} {'a (cm)':<10} {'Viga Apoiada':<12}")
+    print("-"*100)
 
     for item in dados:
-        print(f"{item['ref']:<8} {item['secao']:<10} {item['aswmin']:<10.2f} "
-              f"{item['asw_ct']:<10.2f} {item['astrt']:<10.2f} {item['assus']:<10.2f}")
+        a_str = f"{item['a_cm']:.2f}" if item['a_cm'] is not None else "N/A"
+        viga_apoiada_str = item['viga_apoiada'] if item['viga_apoiada'] else "N/A"
 
-    print("-"*80)
+        print(f"{item['ref']:<8} {item['secao']:<10} {item['aswmin']:<10.2f} "
+              f"{item['asw_ct']:<10.2f} {item['astrt']:<10.2f} {item['assus']:<10.2f} "
+              f"{a_str:<10} {viga_apoiada_str:<12}")
+
+    print("-"*100)
     print(f"Total de registros: {len(dados)}")
-    print("="*80)
+    print("="*100)
 
 
 def carregar_json(caminho_json=None):

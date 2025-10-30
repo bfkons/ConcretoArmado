@@ -97,14 +97,36 @@ def solicitar_dados_adicionais(viga: Dict, secao: Tuple[float, float]) -> Option
     print("-" * 80)
 
     try:
-        # Reação de apoio
-        rd_tf = float(input("\nReacao de apoio Rd (tf): ").strip())
+        # Calcular Rd automaticamente de AsTrt
+        # AsTrt em cm², fyd em MPa
+        # Rd (tf) = AsTrt (cm²) × fyd (MPa) × 10 / 1000
+        fyd_mpa = 500.0 / 1.15  # CA-50 padrão
+        rd_calculado_tf = viga['astrt'] * fyd_mpa * 0.01
 
-        # Faixa de transferência (sugestão: 1.5 × h)
+        print(f"\nRd calculado de AsTrt: {rd_calculado_tf:.2f} tf")
+        print(f"  (AsTrt = {viga['astrt']:.2f} cm2, fyd = {fyd_mpa:.2f} MPa)")
+
+        # Permitir ajuste manual se necessário
+        ajuste = input("Deseja ajustar Rd manualmente? (s/N): ").strip().lower()
+        if ajuste == 's':
+            rd_tf = float(input("Digite Rd (tf): ").strip())
+        else:
+            rd_tf = rd_calculado_tf
+
+        # Faixa de transferência
         largura, altura = secao
-        sugestao_a = 1.5 * altura
-        a_input = input(f"Faixa de transferencia 'a' (cm) [sugestao: {sugestao_a:.1f}]: ").strip()
-        a_cm = float(a_input) if a_input else sugestao_a
+
+        # Usar 'a_cm' do JSON se disponível, senão solicitar
+        if viga.get('a_cm') is not None:
+            a_cm_json = viga['a_cm']
+            viga_apoiada = viga.get('viga_apoiada', 'desconhecida')
+            print(f"\na extraido do RELGER.lst: {a_cm_json:.2f} cm (viga apoiada: {viga_apoiada})")
+            a_input = input(f"Pressione ENTER para usar {a_cm_json:.2f} cm ou digite outro valor: ").strip()
+            a_cm = float(a_input) if a_input else a_cm_json
+        else:
+            sugestao_a = 1.5 * altura
+            a_input = input(f"Faixa de transferencia 'a' (cm) [sugestao: {sugestao_a:.1f}]: ").strip()
+            a_cm = float(a_input) if a_input else sugestao_a
 
         # Resistência do concreto
         fck_mpa = float(input("Resistencia do concreto fck (MPa): ").strip())
@@ -267,8 +289,12 @@ def gerar_relatorio_texto(resultados: List[Dict], caminho_arquivo: str) -> bool:
                 tc = resultado['tirante_contagem']
                 f.write("\n--- TIRANTE ---\n")
                 f.write(f"  N estribos em 'a'             : {tc['n_estribos_em_a']}\n")
-                f.write(f"  As total (mm2)                : {tc['as_tirante_mm2']:.1f}\n")
-                f.write(f"  Capacidade (N)                : {tc['capacidade_rd_n']:.0f}\n")
+                # Conversão mm² → cm²
+                as_total_cm2 = tc['as_tirante_mm2'] / 100.0
+                f.write(f"  As total (cm2)                : {as_total_cm2:.2f}\n")
+                # Conversão N → tf
+                capacidade_tf = tc['capacidade_rd_n'] / 9806.65
+                f.write(f"  Capacidade (tf)               : {capacidade_tf:.2f}\n")
                 status = "OK" if tc['atende_rd'] else "NAO ATENDE"
                 f.write(f"  Status                        : {status}\n")
 
@@ -278,14 +304,17 @@ def gerar_relatorio_texto(resultados: List[Dict], caminho_arquivo: str) -> bool:
                 if anc.get('pulado', False):
                     f.write(f"  Pulado: {anc.get('motivo', '')}\n")
                 else:
-                    f.write(f"  lb necessario (mm)            : {anc['lb_necessario_mm']:.0f}\n")
-                    f.write(f"  lb minimo (mm)                : {anc['lb_minimo_mm']:.0f}\n")
+                    # Conversão mm → cm
+                    lb_necessario_cm = anc['lb_necessario_mm'] / 10.0
+                    lb_minimo_cm = anc['lb_minimo_mm'] / 10.0
+                    f.write(f"  lb necessario (cm)            : {lb_necessario_cm:.2f}\n")
+                    f.write(f"  lb minimo (cm)                : {lb_minimo_cm:.2f}\n")
 
                 # Apoio
                 ap = resultado['apoio']
                 f.write("\n--- COMPRESSAO DE APOIO ---\n")
-                f.write(f"  sigma_c,d (MPa)               : {ap['sigma_c_d_mpa']:.3f}\n")
-                f.write(f"  Limite (MPa)                  : {ap['limite_mpa_nu_fcd']:.3f}\n")
+                f.write(f"  sigma_c,d (MPa)               : {ap['sigma_c_d_mpa']:.2f}\n")
+                f.write(f"  Limite (MPa)                  : {ap['limite_mpa_nu_fcd']:.2f}\n")
                 status = "OK" if ap['atende'] else "NAO ATENDE"
                 f.write(f"  Status                        : {status}\n")
 
@@ -295,19 +324,25 @@ def gerar_relatorio_texto(resultados: List[Dict], caminho_arquivo: str) -> bool:
                 if bi.get('pulado', False):
                     f.write("  Pulado\n")
                 else:
-                    f.write(f"  sigma_biela (MPa)             : {bi['sigma_biela_mpa']:.3f}\n")
-                    f.write(f"  Limite (MPa)                  : {bi['limite_mpa_nu_fcd']:.3f}\n")
+                    f.write(f"  sigma_biela (MPa)             : {bi['sigma_biela_mpa']:.2f}\n")
+                    f.write(f"  Limite (MPa)                  : {bi['limite_mpa_nu_fcd']:.2f}\n")
                     status = "OK" if bi['atende'] else "NAO ATENDE"
                     f.write(f"  Status                        : {status}\n")
 
                 # Suspensão
                 sus = resultado['suspensao']
                 f.write("\n--- ARMADURA DE SUSPENSAO ---\n")
-                f.write(f"  Asw,sus (cm2/m)               : {sus['entrada_asw_sus_cm2pm']}\n")
-                f.write(f"  Asw[C+T] (cm2/m)              : {sus['entrada_asw_ct_cm2pm']}\n")
-                f.write(f"  Asw,total (cm2/m)             : {sus.get('asw_total_cm2pm', None)}\n")
-                f.write(f"  s_governante (cm)             : {sus.get('s_governante_cm', None)}\n")
-                f.write(f"  Asw obtido (cm2/m)            : {sus.get('asw_obtido_cm2pm', None)}\n")
+                asw_sus = sus['entrada_asw_sus_cm2pm']
+                asw_ct = sus['entrada_asw_ct_cm2pm']
+                asw_total = sus.get('asw_total_cm2pm', None)
+                s_gov = sus.get('s_governante_cm', None)
+                asw_obt = sus.get('asw_obtido_cm2pm', None)
+
+                f.write(f"  Asw,sus (cm2/m)               : {asw_sus:.2f if asw_sus is not None else 'N/A'}\n")
+                f.write(f"  Asw[C+T] (cm2/m)              : {asw_ct:.2f if asw_ct is not None else 'N/A'}\n")
+                f.write(f"  Asw,total (cm2/m)             : {asw_total:.2f if asw_total is not None else 'N/A'}\n")
+                f.write(f"  s_governante (cm)             : {s_gov:.2f if s_gov is not None else 'N/A'}\n")
+                f.write(f"  Asw obtido (cm2/m)            : {asw_obt:.2f if asw_obt is not None else 'N/A'}\n")
                 atende = sus.get('atende_asw_total', None)
                 if atende is not None:
                     status = "OK" if atende else "NAO ATENDE"

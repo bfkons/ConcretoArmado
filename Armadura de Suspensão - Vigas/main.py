@@ -13,7 +13,7 @@ import sys
 from pathlib import Path
 
 import relger
-import verificacoes
+import verificacoes_refatorado as verificacoes
 
 
 def limpar_tela():
