@@ -106,26 +106,32 @@ def solicitar_verificacao_tirante(viga: Dict, secao: Tuple[float, float]) -> Opt
         return None
 
 
-def solicitar_verificacao_suspensao(viga: Dict, secao: Tuple[float, float]) -> Optional[Dict]:
+def solicitar_verificacao_suspensao(viga: Dict, secao: Tuple[float, float], fator: float = 1.0, titulo: str = "VIGA DE APOIO") -> Optional[Dict]:
     """
     Solicita dados e executa verificação de suspensão distribuída
 
     Args:
         viga: Dados da viga do JSON
         secao: Tupla (largura, altura) em cm
+        fator: Fator a aplicar no AsSus (0.75 para viga apoio, 0.25 para viga apoiada)
+        titulo: Título da verificação
 
     Returns:
         Resultado da verificação ou None se cancelado
     """
     largura, altura = secao
+    assus_ajustado = viga['assus'] * fator
 
     print("\n" + "=" * 80)
-    print("VERIFICACAO 2: SUSPENSAO DISTRIBUIDA")
+    print(f"VERIFICACAO 2: SUSPENSAO DISTRIBUIDA - {titulo}")
     print("=" * 80)
     print(f"Viga: {viga['ref']}")
-    print(f"AsSus necessario (do TQS): {viga['assus']:.2f} cm2/m")
+    print(f"AsSus total (do TQS): {viga['assus']:.2f} cm2/m")
+    if fator != 1.0:
+        print(f"Fator aplicado: {fator:.2f}")
+        print(f"AsSus ajustado: {assus_ajustado:.2f} cm2/m")
     print(f"Asw[C+T] (do TQS): {viga['asw_ct']:.2f} cm2/m")
-    print(f"Governante: {max(viga['assus'], viga['asw_ct']):.2f} cm2/m")
+    print(f"Governante: {max(assus_ajustado, viga['asw_ct']):.2f} cm2/m")
     print(f"Faixa cfxa (bw + h): {largura + altura:.2f} cm")
     print("")
 
@@ -143,7 +149,7 @@ def solicitar_verificacao_suspensao(viga: Dict, secao: Tuple[float, float]) -> O
 
         # Executar verificação
         verificacao = verificar_suspensao_distribuida(
-            assus_cm2pm=viga['assus'],
+            assus_cm2pm=assus_ajustado,  # Usar valor ajustado
             asw_ct_cm2pm=viga['asw_ct'],
             bw_cm=largura,
             h_cm=altura,
@@ -153,21 +159,93 @@ def solicitar_verificacao_suspensao(viga: Dict, secao: Tuple[float, float]) -> O
             formatado=formatado
         )
 
-        return verificacao.to_dict()
+        resultado = verificacao.to_dict()
+        # Adicionar informações extras ao resultado
+        resultado['assus_total_cm2pm'] = viga['assus']
+        resultado['fator_aplicado'] = fator
+
+        return resultado
 
     except (ValueError, KeyboardInterrupt) as e:
         print(f"\nErro: {e}")
         return None
 
 
-def gerar_relatorio_completo(viga: Dict, resultado_tirante: Dict, resultado_suspensao: Dict) -> str:
+def solicitar_verificacao_viga_apoiada(viga_apoio: Dict) -> Optional[Dict]:
     """
-    Gera relatório completo com ambas as verificações
+    Solicita dados e executa verificação de suspensão na viga apoiada (25% do AsSus)
+
+    Args:
+        viga_apoio: Dados da viga de apoio (que tem AsSus e secao_viga_apoiada)
+
+    Returns:
+        Resultado da verificação ou None se cancelado
+    """
+    # Parsear seção da viga apoiada (vem do JSON da viga_apoio)
+    secao_apoiada = parsear_secao(viga_apoio['secao_viga_apoiada'])
+    largura_apoiada, altura_apoiada = secao_apoiada
+    viga_apoiada_ref = viga_apoio['viga_apoiada']
+
+    # Calcular AsSus para viga apoiada (25%)
+    assus_25 = viga_apoio['assus'] * 0.25
+    comprimento_distribuicao = altura_apoiada / 2.0
+
+    print("\n" + "=" * 80)
+    print(f"VERIFICACAO 2B: SUSPENSAO NA VIGA APOIADA ({viga_apoiada_ref})")
+    print("=" * 80)
+    print(f"Viga apoio: {viga_apoio['ref']} (AsSus total: {viga_apoio['assus']:.2f} cm2/m)")
+    print(f"Viga apoiada: {viga_apoiada_ref}")
+    print(f"Secao viga apoiada: {viga_apoio['secao_viga_apoiada']} cm")
+    print(f"AsSus para viga apoiada (25%): {assus_25:.2f} cm2/m")
+    print(f"Comprimento de distribuicao (H/2): {comprimento_distribuicao:.2f} cm")
+    print("")
+
+    try:
+        # Solicitar configuração de estribos EXISTENTES na viga apoiada
+        print("Estribo EXISTENTE na viga apoiada:")
+        print("  Formato: XX/YY (ex: 8/10 = phi 8mm a cada 10cm)")
+        print("  Formato: NRXX/YY (ex: 2R8/10 = 2 ramos, phi 8mm a cada 10cm)")
+        config_estribo = input("Digite a configuracao do estribo existente: ").strip()
+
+        phi_mm, espacamento_cm, ramos = parsear_config_estribo(config_estribo)
+        validar_config_estribo(phi_mm, espacamento_cm, ramos)
+
+        formatado = formatar_config_estribo(phi_mm, espacamento_cm, ramos)
+
+        # Executar verificação (usando altura da viga apoiada para cfxa)
+        verificacao = verificar_suspensao_distribuida(
+            assus_cm2pm=assus_25,
+            asw_ct_cm2pm=0.0,  # Não há Asw[C+T] para considerar aqui
+            bw_cm=largura_apoiada,
+            h_cm=altura_apoiada,
+            diametro_mm=phi_mm,
+            espacamento_cm=espacamento_cm,
+            ramos=ramos,
+            formatado=formatado
+        )
+
+        resultado = verificacao.to_dict()
+        # Adicionar informações extras
+        resultado['assus_total_viga_apoio_cm2pm'] = viga_apoio['assus']
+        resultado['fator_aplicado'] = 0.25
+        resultado['comprimento_distribuicao_cm'] = comprimento_distribuicao
+
+        return resultado
+
+    except (ValueError, KeyboardInterrupt) as e:
+        print(f"\nErro: {e}")
+        return None
+
+
+def gerar_relatorio_completo(viga: Dict, resultado_tirante: Dict, resultado_suspensao_apoio: Dict, resultado_suspensao_apoiada: Optional[Dict] = None) -> str:
+    """
+    Gera relatório completo com todas as verificações
 
     Args:
         viga: Dados da viga
         resultado_tirante: Resultado da verificação do tirante
-        resultado_suspensao: Resultado da verificação da suspensão
+        resultado_suspensao_apoio: Resultado da verificação da suspensão (viga apoio)
+        resultado_suspensao_apoiada: Resultado da verificação da suspensão (viga apoiada)
 
     Returns:
         String com relatório formatado
@@ -177,6 +255,8 @@ def gerar_relatorio_completo(viga: Dict, resultado_tirante: Dict, resultado_susp
     linhas.append(f"VIGA: {viga['ref']}")
     linhas.append("=" * 80)
     linhas.append(f"Secao: {viga['secao']} cm")
+    if viga.get('viga_apoiada'):
+        linhas.append(f"Viga apoiada: {viga['viga_apoiada']}")
     linhas.append("")
 
     # Tirante
@@ -185,11 +265,29 @@ def gerar_relatorio_completo(viga: Dict, resultado_tirante: Dict, resultado_susp
     linhas.append(imprimir_relatorio_tirante(vt))
     linhas.append("")
 
-    # Suspensão
-    from suspensao_distribuida import VerificacaoSuspensao
-    vs = VerificacaoSuspensao(**resultado_suspensao)
-    linhas.append(imprimir_relatorio_suspensao(vs))
+    # Suspensão - Viga de Apoio (75%)
+    linhas.append("--- SUSPENSAO DISTRIBUIDA: VIGA DE APOIO ---")
+    linhas.append(f"  AsSus total (TQS) (cm2/m)  : {resultado_suspensao_apoio['assus_total_cm2pm']:.2f}")
+    linhas.append(f"  Fator aplicado             : {resultado_suspensao_apoio['fator_aplicado']:.2f}")
+    linhas.append(f"  AsSus ajustado (cm2/m)     : {resultado_suspensao_apoio['assus_necessario_cm2pm']:.2f}")
+    linhas.append(f"  Asw[C+T] (cm2/m)           : {resultado_suspensao_apoio['asw_ct_cm2pm']:.2f}")
+    linhas.append(f"  Governante (cm2/m)         : {resultado_suspensao_apoio['asw_governante_cm2pm']:.2f}")
+    linhas.append(f"  Faixa cfxa (bw+h) (cm)     : {resultado_suspensao_apoio['faixa_cfxa_cm']:.2f}")
+    linhas.append(f"  Solucao adotada            : {resultado_suspensao_apoio['formatado']}")
+    linhas.append(f"  Asw fornecido (cm2/m)      : {resultado_suspensao_apoio['asw_fornecido_cm2pm']:.2f}")
+    linhas.append(f"  Status                     : {'ATENDE' if resultado_suspensao_apoio['atende'] else 'NAO ATENDE'}")
     linhas.append("")
+
+    # Suspensão - Viga Apoiada (25%) - se houver
+    if resultado_suspensao_apoiada:
+        linhas.append("--- SUSPENSAO DISTRIBUIDA: VIGA APOIADA ---")
+        linhas.append(f"  Viga apoiada               : {viga['viga_apoiada']}")
+        linhas.append(f"  AsSus para viga apoiada (25%) (cm2/m): {resultado_suspensao_apoiada['assus_necessario_cm2pm']:.2f}")
+        linhas.append(f"  Comprimento (H/2) (cm)     : {resultado_suspensao_apoiada['comprimento_distribuicao_cm']:.2f}")
+        linhas.append(f"  Estribo existente          : {resultado_suspensao_apoiada['formatado']}")
+        linhas.append(f"  Asw existente (cm2/m)      : {resultado_suspensao_apoiada['asw_fornecido_cm2pm']:.2f}")
+        linhas.append(f"  Status                     : {'ATENDE' if resultado_suspensao_apoiada['atende'] else 'NAO ATENDE'}")
+        linhas.append("")
 
     return "\n".join(linhas)
 
@@ -258,14 +356,21 @@ def executar_verificacoes_completas() -> bool:
                 print("\nVerificacao de tirante cancelada.")
                 continue
 
-            # Verificação 2: Suspensão Distribuída
-            resultado_suspensao = solicitar_verificacao_suspensao(viga, secao)
-            if not resultado_suspensao:
-                print("\nVerificacao de suspensao cancelada.")
+            # Verificação 2A: Suspensão Distribuída - Viga de APOIO (75%)
+            resultado_suspensao_apoio = solicitar_verificacao_suspensao(viga, secao, fator=0.75, titulo="VIGA DE APOIO")
+            if not resultado_suspensao_apoio:
+                print("\nVerificacao de suspensao (viga apoio) cancelada.")
                 continue
 
+            # Verificação 2B: Suspensão Distribuída - Viga APOIADA (25%)
+            resultado_suspensao_apoiada = None
+            if viga.get('viga_apoiada') and viga.get('secao_viga_apoiada'):
+                resultado_suspensao_apoiada = solicitar_verificacao_viga_apoiada(viga)
+                if not resultado_suspensao_apoiada:
+                    print("\nVerificacao de suspensao (viga apoiada) cancelada.")
+
             # Gerar relatório
-            relatorio = gerar_relatorio_completo(viga, resultado_tirante, resultado_suspensao)
+            relatorio = gerar_relatorio_completo(viga, resultado_tirante, resultado_suspensao_apoio, resultado_suspensao_apoiada)
             relatorios_completos.append(relatorio)
 
             # Exibir resumo

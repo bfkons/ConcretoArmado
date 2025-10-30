@@ -254,9 +254,10 @@ def processar_relger(caminho_arquivo):
                 dados = extrair_valores_por_posicao(linha, mapa_colunas)
 
                 if dados and dados['astrt'] != 0.0:
-                    # Determinar 'a' (largura da viga apoiada)
+                    # Determinar 'a' (largura da viga apoiada) e seção da viga apoiada
                     a_cm = None
                     viga_apoiada_nome = None
+                    secao_viga_apoiada = None
 
                     if viga_atual in reacoes_apoio:
                         # Pegamos a primeira viga apoiada (pode ter múltiplas)
@@ -266,6 +267,19 @@ def processar_relger(caminho_arquivo):
                             if viga_apoiada_nome in geometrias:
                                 a_cm = geometrias[viga_apoiada_nome]
 
+                                # Buscar seção completa da viga apoiada
+                                # Procurar nas linhas já lidas para encontrar a seção dessa viga
+                                for linha_busca in linhas:
+                                    if f'Viga=' in linha_busca and viga_apoiada_nome in linha_busca:
+                                        # Encontrou a linha com a viga, próxima linha terá geometria
+                                        idx = linhas.index(linha_busca)
+                                        # Procurar linha de geometria nas próximas linhas
+                                        for j in range(idx, min(idx + 10, len(linhas))):
+                                            if '/B=' in linhas[j] and '/H=' in linhas[j]:
+                                                secao_viga_apoiada = extrair_secao(linhas[j])
+                                                break
+                                        break
+
                     registro = {
                         'ref': viga_atual,
                         'secao': secao_atual,
@@ -274,7 +288,8 @@ def processar_relger(caminho_arquivo):
                         'astrt': dados['astrt'],
                         'assus': dados['assus'],
                         'a_cm': a_cm,
-                        'viga_apoiada': viga_apoiada_nome
+                        'viga_apoiada': viga_apoiada_nome,
+                        'secao_viga_apoiada': secao_viga_apoiada
                     }
                     vigas_extraidas.append(registro)
 
