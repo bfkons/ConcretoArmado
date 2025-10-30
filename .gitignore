@@ -152,3 +152,6 @@ Thumbs.db
 # Excel temporary files
 ~$*.xlsx
 ~$*.xls
+
+# Generated data files
+Armadura de Suspensão - Vigas/vigas_suspensao.json

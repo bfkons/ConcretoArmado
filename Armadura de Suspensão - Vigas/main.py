@@ -13,6 +13,7 @@ import sys
 from pathlib import Path
 
 import relger
+import verificacoes
 
 
 def limpar_tela():
@@ -27,7 +28,7 @@ def exibir_menu():
     print("="*60)
     print("\n1. Carregar relatorio RELGER.lst")
     print("2. Visualizar dados carregados")
-    print("3. Verificar armaduras (em desenvolvimento)")
+    print("3. Verificar armaduras de suspensao (NBR 6118)")
     print("0. Sair")
     print("\n" + "="*60)
 
@@ -65,15 +66,19 @@ def opcao_visualizar_dados():
 
 
 def opcao_verificar_armaduras():
-    """Placeholder para verificações futuras"""
+    """Executa verificações de armadura de suspensão conforme NBR 6118"""
     limpar_tela()
-    print("\n=== VERIFICACAO DE ARMADURAS ===\n")
-    print("Funcionalidade em desenvolvimento.")
-    print("\nIntegracao futura com as_tirante.py para verificacoes NBR 6118:")
-    print("- Contagem de estribos efetivos")
-    print("- Ancoragem das pernas")
-    print("- Compressao de apoio")
-    print("- Tensao em bielas")
+
+    try:
+        sucesso = verificacoes.executar_verificacoes_completas()
+
+        if sucesso:
+            print("\nVerificacoes concluidas com sucesso.")
+        else:
+            print("\nVerificacoes nao foram concluidas.")
+
+    except Exception as e:
+        print(f"\nErro ao executar verificacoes: {e}")
 
     input("\nPressione ENTER para continuar...")
 
