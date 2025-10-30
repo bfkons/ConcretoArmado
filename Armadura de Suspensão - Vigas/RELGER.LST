@@ -1,0 +1,350 @@
+MVK ENGENHARIA E CONSTRU??ES EIRELI        R E L G E R   -  Relatorio geral de vigas         (V25.12.28  )     Pg   1
+Rua Carlos Rischbieter, 1870                                                BLUMENAU 89012-255 SC              
+     T   Q   S        Projeto: 0011 - Reservatórios                                                    30/10/25
+   TQS/Vigas                                                                                           11:41:12
+-----------------------------------------------------------------------------------------------------------------------------------
+                         fck=350.kgF/cm2  Aco :CA 50                            -  Esforcos Caracteristicos
+L E G E N D A
+G E O M E T R I A
+Eng.E     : Engastamento a Esquerda        / Eng.D     : Engastamento a Direita         / Repet   : Repeticoes                    
+NAnd      : N.de Andares                   / Red V Ext : Reducao de Cortante no Extremo / Fat.Alt : Fator de Alternancia de Cargas
+Cob       : Cobrimento                     / TpS       : Tipo da Secao                  / BCs     : Mesa Colaborante Superior     
+BCi       : Mesa Colaborante Inferior      / Esp.LS    : Espessura Laje Superior        / Esp.LI  : Espessura Laje Inferior       
+FSp.Ex    : Distancia Face Superior   Eixo / FLt.Ex    : Distancia Face Lateral ao Eixo / Cob/S   : Cobrim/Cobr.superior adicional
+C A R G A S
+MEsq : Momento Adicional a Esquerda        / MDir : Momento Adicional a Direita         / Q    : Cortante Adicional (valor unico)   
+A R M A D U R A S   -   F L E X A O
+SRAS  : Secao Retangular Armad.Simples     / SRAD  : Secao Retangular Armad.Dupla       / STAS  : Secao Te Armadura Simples         
+STAD  : Secao Te Armadura Dupla            / x/d   : Profund. relativa da Linha Neutra  / x/dMx : Profund. relativa da LN Maxima    
+AsL   : Armadura de Compressao             / Bit.de Fiss.: Bitola de fissuracao         / Asapo : Armadura e/d que chega no extremo 
+A R M A D U R A S   -   C I S A L H A M E N T O
+MdC     : Modelo de Calculo (I ou II)      / Ang.    : Angulo da biela de compressao    / Aswmin : Armad.transv.minima-cisalhamento
+Asw[C+T]: Arm.tran.calculada cisalh+torcao / Bit     : Bitola selecionada               / Esp    : Espacamento selecionado         
+NR      : Numero de ramos do estribo       / AsTrt   : Armadura transversal de Tirante  / AsSus  : Armadura transversal-Suspensao  
+A R M A D U R A S   -   T O R C A O
+%dT     : % limite de TRd2 para desprezar o M de torcao (Tsd)      / he      : Espessura do nucleo de torcao                           
+b-nuc   : Largura do nucleo                                        / h-nuc   : Altura do nucleo                                        
+Asw-1R  : Armadura de torcao calculada para 1 Ramo de estribo      / AswmnNR : Armad.transv.minima-torcao p/NR estribos selecionado    
+Asl-b   : Armadura longitudinal de torcao no lado b                / Asl-h   : Armadura longitudinal de torcao no lado h               
+ComDia  : Valor da compressao diagonal (cisalhamento+torcao)       / AdPla   : Capacida/ adaptacao plastica no vao - S[sim]  N[nao]
+R E A C O E S   D E   A P O I O
+DEPEV  : Distancia do eixo do pilar ao eixo efetivo de apoio -viga / Morte  : Codigo se pilar morre / segue / vigas                    
+M.I.Mx : Momento Imposto Maximo                                    / M.I.Mn : Momento Imposto Minimo                                   
+==================================================================================================================================
+
+Viga=  801  V801                           Eng.E=Nao /Eng.D=Nao /Repet= 1 /NAnd= 1 /Red V Ext=Nao /Fat.Alt=1.00 /Cob/S=2.5 0.0 CM
+
+-------------------------------   G  E  O  M  E  T  R  I  A       E      C  A  R  G  A  S    ------------------------------- 
+Vao= 1  /L=  8.13 /B= 0.20 /H=  0.70  /BCs= 0.00 /BCi= 0.20 /TpS=  6 /Esp.LS= 0.00 /Esp.LI= 0.20 FSp.Ex= 0.35 /FLt.Ex= 0.10   [M]
+--Solicitações provenientes de modelo de grelha e/ou pórtico espacial---  Estrut. Nós FIXOS  --- DeltaE=1.00   DeltaD=1.00  ---
+
+-    -    -    -    -    -   A  R  M  A  D  U  R  A  S   ( F L E X A O   E    C I S A L H A M E N T O )   -    -   -    -    - 
+FLEXAO-| E S Q U E R D A                         | M E I O   D O    V A O                     | D I R E I T A                        
+       | M.[-] =     13.9 tf* m                  | M.[+] Max=      6.2 tf* m - Abcis.= 338    | M.[-] =     15.5  tf* m
+[tf,cm]| As =   7.19  -STAS-   [  4 B 16.0mm]    | AsL=   0.00   ------                       | As =   8.08  -STAS- [  4 B 16.0mm]
+       | AsL=   0.00  ------       x/d  =0.14    | As =   3.09   -SRAS-  [  3 B 12.5mm ]      | AsL=   0.00  ------     x/d  =0.16
+       |                           x/dMx=0.45    | Arm.Lat.=[2 X  3 B  8.0mm] - LN=  4.0      |                         x/dMx=0.45
+       |                             CG=  3.8    |                                            |                           CG=  3.8
+[tf,cm]| M[-]Min =   392.0        BCs=     0.    | M[+]Min =   392.0                          | M[-]Min =   392.0      BCs=     0.
+[cm2  ]| Asapo[+]=  0.77                         |                              CG=  3.6      | Asapo[+]=  0.77                   
+[ cm  ]| Esp,bar =   2.5                         | Esp,bar  = 5.0                             | Esp,bar =   2.5                   
+[cm2  ]| Asmn,sup=   2.1                         | Asmn,inf =  2.1                            | Asmn,sup=   2.1                   
+
+CISALHAMENTO-  Xi    Xf    Vsd   VRd2 MdC Ang. Asw[C] Aswmin Asw[C+T]  Bit  Esp NR AsTrt AsSus            M E N S A G E M 
+[tf,cm]        0.- 771.  14.05  76.91   1  45.    0.5    2.6      2.6  5.0 15.0  2   0.0   0.0                        
+
+T O R C A O-   Xi    Xf    Tsd   TRd2 %dT   he b-nuc h-nuc Asw-1R AswMnNR  Asl-mn Asl-b Asl-h ComDia AdPla      M E N S A G E M    
+[tf,cm]        0.- 771.   0.20   6.31   5  7.8  12.1  62.1    0.0     0.0     0.0   0.0   0.0   0.21   N                                 
+
+REAC. APOIO - No.   Maximos   Minimos   Largura    DEPEV  Morte    Nome     M.I.Mx M.I.Mn          Pilares:
+               1    10.024     7.647      0.70     0.14      0   P37B       0.00   0.00    800      0      0      0      0      0
+               2     9.990     7.647      0.75     0.17      0   P38B       0.00   0.00    801      0      0      0      0      0
+==================================================================================================================================
+
+Viga=  802  V802                           Eng.E=Nao /Eng.D=Nao /Repet= 1 /NAnd= 1 /Red V Ext=Nao /Fat.Alt=1.00 /Cob/S=2.5 0.0 CM
+
+-------------------------------   G  E  O  M  E  T  R  I  A       E      C  A  R  G  A  S    ------------------------------- 
+Vao= 1  /L=  8.96 /B= 0.20 /H=  1.40  /BCs= 1.10 /BCi= 0.20 /TpS= 10 /Esp.LS= 0.00 /Esp.LI= 0.00 FSp.Ex= 0.70 /FLt.Ex= 0.10   [M]
+--Solicitações provenientes de modelo de grelha e/ou pórtico espacial---  Estrut. Nós FIXOS  --- DeltaE=1.00   DeltaD=1.00  ---
+
+-    -    -    -    -    -   A  R  M  A  D  U  R  A  S   ( F L E X A O   E    C I S A L H A M E N T O )   -    -   -    -    - 
+FLEXAO-| E S Q U E R D A                         | M E I O   D O    V A O                     | D I R E I T A                        
+       | M.[-] =      5.4 tf* m                  | M.[+] Max=     39.6 tf* m - Abcis.= 448    | M.[-] =      0.0  tf* m
+[tf,cm]| As =   4.20  -SRAS-   [  4 B 12.5mm]    | AsL=   0.00   ------                       | As =   0.00  -SRAS- [  0 B  8.0mm]
+       | AsL=   0.00  ------       x/d  =0.04    | As =   9.76   -STAS-  [  5 B 16.0mm ]      | AsL=   0.00  ------     x/d  =0.00
+       | Grampos Esq.= 2B  8.0mm   x/dMx=0.45    | Arm.Lat.=[2 X  6 B  8.0mm] - LN= 12.5      | Grampos Dir.= 2B  8.0mm x/dMx=0.45
+       |                             CG=  3.6    |                                            |                           CG=  3.4
+[tf,cm]| M[-]Min =  1568.0        BCs=    35.    | M[+]Min =  1568.0                          | M[-]Min =  1568.0      BCs=    20.
+[cm2  ]| Asapo[+]=  4.93                         |                              CG=  4.5      | Asapo[+]=  5.26                   
+[ cm  ]| Esp,bar =   2.9                         | Esp,bar  = 2.5                             | Esp,bar =  12.2                   
+[cm2  ]| Asmn,sup=   4.2                         | Asmn,inf =  4.2                            | Asmn,sup=   4.2                   
+
+CISALHAMENTO-  Xi    Xf    Vsd   VRd2 MdC Ang. Asw[C] Aswmin Asw[C+T]  Bit  Esp NR AsTrt AsSus            M E N S A G E M 
+[tf,cm]        0.- 876.  22.85 157.98   1  45.    0.0    2.6      2.6  5.0 15.0  2   0.0   0.0                        
+
+T O R C A O-   Xi    Xf    Tsd   TRd2 %dT   he b-nuc h-nuc Asw-1R AswMnNR  Asl-mn Asl-b Asl-h ComDia AdPla      M E N S A G E M    
+[tf,cm]        0.- 876.   0.01  13.89   5  8.8  11.3 131.2    0.0     0.0     0.0   0.0   0.0   0.15   N                                 
+
+REAC. APOIO - No.   Maximos   Minimos   Largura    DEPEV  Morte    Nome     M.I.Mx M.I.Mn          Pilares:
+               1    15.277    12.616      0.20     0.00      0   P46        0.00   0.00     46      0      0      0      0      0
+               2    16.318    13.512      0.20     0.00      2   V808       0.00   0.00      0      0      0      0      0      0
+==================================================================================================================================
+
+Viga=  803  V803                           Eng.E=Nao /Eng.D=Nao /Repet= 1 /NAnd= 1 /Red V Ext=Nao /Fat.Alt=1.00 /Cob/S=2.5 0.0 CM
+
+-------------------------------   G  E  O  M  E  T  R  I  A       E      C  A  R  G  A  S    ------------------------------- 
+Vao= 1B /L=  1.59 /B= 0.20 /H=  0.70  /BCs= 0.00 /BCi= 0.00 /TpS=  1 /Esp.LS= 0.00 /Esp.LI= 0.00 FSp.Ex= 0.35 /FLt.Ex= 0.10   [M]
+--Solicitações provenientes de modelo de grelha e/ou pórtico espacial---  Estrut. Nós FIXOS  --- DeltaE=1.00   DeltaD=1.00  ---
+
+-    -    -    -    -    -   A  R  M  A  D  U  R  A  S   ( F L E X A O   E    C I S A L H A M E N T O )   -    -   -    -    - 
+FLEXAO  | M[-]=     3.92 tf* m                | As =   2.10   -SRAS-       [   2 B 12.5mm]                   
+BAL.ESQ |                           x/d =0.04 | AsL=   0.00   -Arm.Lat.=[ 2 X  3 B  8.0mm]                   
+[tf,cm] | M[-]Min=  392.0      -  x/dMx =0.45 |                           CG=  3.6 cm          | % Baric.Armad.= 1        
+[ cm  ] | Esp,bar=   11.3      -              | Asmin =    2.1 cm2
+
+CISALHAMENTO-  Xi    Xf    Vsd   VRd2 MdC Ang. Asw[C] Aswmin Asw[C+T]  Bit  Esp NR AsTrt AsSus            M E N S A G E M 
+[tf,cm]        0.- 149.   3.60  76.91   1  45.    0.0    2.6      2.6  5.0 15.0  2   0.0   1.4                        
+
+T O R C A O-   Xi    Xf    Tsd   TRd2 %dT   he b-nuc h-nuc Asw-1R AswMnNR  Asl-mn Asl-b Asl-h ComDia AdPla      M E N S A G E M    
+[tf,cm]        0.- 149.   0.13   6.31   5  7.8  12.1  62.1    0.0     0.0     0.0   0.0   0.0   0.07   N                                 
+
+REAC. APOIO - No.   Maximos   Minimos   Largura    DEPEV  Morte    Nome     M.I.Mx M.I.Mn          Pilares:
+               1     1.671     0.304      0.20     0.00      0   P54        0.00   0.00     54      0      0      0      0      0
+==================================================================================================================================
+
+Viga=  804  V804                           Eng.E=Nao /Eng.D=Nao /Repet= 1 /NAnd= 1 /Red V Ext=Nao /Fat.Alt=1.00 /Cob/S=2.5 0.0 CM
+
+-------------------------------   G  E  O  M  E  T  R  I  A       E      C  A  R  G  A  S    ------------------------------- 
+Vao= 1  /L=  6.64 /B= 0.70 /H=  0.25  /BCs= 1.50 /BCi= 0.00 /TpS=  2 /Esp.LS= 0.25 /Esp.LI= 0.00 FSp.Ex= 0.12 /FLt.Ex= 0.35   [M]
+--Solicitações provenientes de modelo de grelha e/ou pórtico espacial---  Estrut. Nós FIXOS  --- DeltaE=1.00   DeltaD=1.00  ---
+
+-    -    -    -    -    -   A  R  M  A  D  U  R  A  S   ( F L E X A O   E    C I S A L H A M E N T O )   -    -   -    -    - 
+FLEXAO-| E S Q U E R D A                         | M E I O   D O    V A O                     | D I R E I T A                        
+       | M.[-] =     11.9 tf* m                  | M.[+] Max=      4.9 tf* m - Abcis.= 332    | M.[-] =     11.5  tf* m
+[tf,cm]| As =  21.91  -SRAS-   [  7 B 20.0mm]    | AsL=   0.00   ------                       | As =  20.98  -SRAS- [  7 B 20.0mm]
+       | AsL=   0.00  ------       x/d  =0.39    | As =   7.76   -STAS-  [  4 B 16.0mm ]      | AsL=   0.00  ------     x/d  =0.37
+       |                           x/dMx=0.45    | Arm.Lat.=[2 X -- B --- mm] - LN=  1.3      |                         x/dMx=0.45
+       |                             CG=  4.3    |                                            |                           CG=  4.3
+[tf,cm]| M[-]Min =   285.7        BCs=   114.    | M[+]Min =   374.2                          | M[-]Min =   374.2      BCs=   150.
+[cm2  ]| Asapo[+]=  1.94                         |                              CG=  4.1      | Asapo[+]=  1.94                   
+       | As,lim= 15.8 - NóPórtico - Verifique****|                                            |                                   
+[ cm  ]| Esp,bar =   7.3                         | Esp,bar  =17.4                             | Esp,bar =   7.3                   
+[cm2  ]| Asmn,sup=   5.6                         | Asmn,inf =  5.7                            | Asmn,sup=   5.6                   
+
+CISALHAMENTO-  Xi    Xf    Vsd   VRd2 MdC Ang. Asw[C] Aswmin Asw[C+T]  Bit  Esp NR AsTrt AsSus            M E N S A G E M 
+[tf,cm]        0.- 649.  25.77  86.33   1  45.   13.8    9.0     13.8  8.0 12.5  4   0.0   0.0                        
+
+T O R C A O-   Xi    Xf    Tsd   TRd2 %dT   he b-nuc h-nuc Asw-1R AswMnNR  Asl-mn Asl-b Asl-h ComDia AdPla      M E N S A G E M    
+[tf,cm]        0.- 649.   0.20   9.50   5  9.2  60.8  15.8    0.0     0.0     0.0   0.0   0.0   0.32   N                                 
+
+-------------------------------   G  E  O  M  E  T  R  I  A       E      C  A  R  G  A  S    ------------------------------- 
+Vao= 2B /L=  0.91 /B= 0.70 /H=  0.25  /BCs= 1.06 /BCi= 0.00 /TpS=  2 /Esp.LS= 0.10 /Esp.LI= 0.00 FSp.Ex= 0.12 /FLt.Ex= 0.35   [M]
+--Solicitações provenientes de modelo de grelha e/ou pórtico espacial---  Estrut. Nós FIXOS  --- DeltaE=1.00   DeltaD=1.00  ---
+
+-    -    -    -    -    -   A  R  M  A  D  U  R  A  S   ( F L E X A O   E    C I S A L H A M E N T O )   -    -   -    -    - 
+FLEXAO  | M[-]=     4.41 tf* m                | As =   7.16   -SRAS-       [   4 B 20.0mm]                   
+BAL.DIR |                           x/d =0.13 | AsL=   0.00   -                                              
+[tf,cm] | M[-]Min=  237.6      -  x/dMx =0.45 |                           CG=  4.1 cm          | % Baric.Armad.= 1        
+[ cm  ] | Esp,bar=   16.8      -              | Asmin =    3.2 cm2
+
+CISALHAMENTO-  Xi    Xf    Vsd   VRd2 MdC Ang. Asw[C] Aswmin Asw[C+T]  Bit  Esp NR AsTrt AsSus            M E N S A G E M 
+[tf,cm]        0.-  78.   8.76  86.33   1  45.    0.0    9.0      9.0  6.3 12.5  4   4.2   6.3                        
+
+T O R C A O-   Xi    Xf    Tsd   TRd2 %dT   he b-nuc h-nuc Asw-1R AswMnNR  Asl-mn Asl-b Asl-h ComDia AdPla      M E N S A G E M    
+[tf,cm]        0.-  78.   0.25   9.50   5  9.2  60.8  15.8    0.0     0.0     0.0   0.0   0.0   0.13   N                                 
+
+REAC. APOIO - No.   Maximos   Minimos   Largura    DEPEV  Morte    Nome     M.I.Mx M.I.Mn          Pilares:
+               1    18.385    15.005      0.20     0.03      0   P54        0.00   0.00     54      0      0      0      0      0
+               2    22.698    16.116      0.20     0.03      0   P55        0.00   0.00     55      0      0      0      0      0
+==================================================================================================================================
+
+Viga=  805  V805                           Eng.E=Nao /Eng.D=Nao /Repet= 1 /NAnd= 1 /Red V Ext=Nao /Fat.Alt=1.00 /Cob/S=2.5 0.0 CM
+
+-------------------------------   G  E  O  M  E  T  R  I  A       E      C  A  R  G  A  S    ------------------------------- 
+Vao= 1  /L=  6.69 /B= 0.20 /H=  0.70  /BCs= 0.00 /BCi= 0.00 /TpS=  1 /Esp.LS= 0.00 /Esp.LI= 0.00 FSp.Ex= 0.35 /FLt.Ex= 0.10   [M]
+--Solicitações provenientes de modelo de grelha e/ou pórtico espacial---  Estrut. Nós FIXOS  --- DeltaE=1.00   DeltaD=1.00  ---
+
+-    -    -    -    -    -   A  R  M  A  D  U  R  A  S   ( F L E X A O   E    C I S A L H A M E N T O )   -    -   -    -    - 
+FLEXAO-| E S Q U E R D A                         | M E I O   D O    V A O                     | D I R E I T A                        
+       | M.[-] =     10.1 tf* m                  | M.[+] Max=     18.1 tf* m - Abcis.= 334    | M.[-] =      9.7  tf* m
+[tf,cm]| As =   5.16  -SRAS-   [  3 B 16.0mm]    | AsL=   0.00   ------                       | As =   4.95  -SRAS- [  4 B 12.5mm]
+       | AsL=   0.00  ------       x/d  =0.10    | As =   9.55   -SRAS-  [  3 B 20.0mm ]      | AsL=   0.00  ------     x/d  =0.10
+       | Grampos Esq.= 4B  8.0mm   x/dMx=0.45    | Arm.Lat.=[2 X  3 B  8.0mm] - LN= 12.2      |                         x/dMx=0.45
+       |                             CG=  3.8    |                                            |                           CG=  3.6
+[tf,cm]| M[-]Min =   392.0        BCs=     0.    | M[+]Min =   392.0                          | M[-]Min =   392.0      BCs=     0.
+[cm2  ]| Asapo[+]=  4.03                         |                              CG=  4.0      | Asapo[+]=  4.04                   
+[ cm  ]| Esp,bar =   4.5                         | Esp,bar  = 3.9                             | Esp,bar =   2.9                   
+[cm2  ]| Asmn,sup=   2.1                         | Asmn,inf =  2.1                            | Asmn,sup=   2.1                   
+
+CISALHAMENTO-  Xi    Xf    Vsd   VRd2 MdC Ang. Asw[C] Aswmin Asw[C+T]  Bit  Esp NR AsTrt AsSus            M E N S A G E M 
+[tf,cm]        0.- 649.  17.55  76.71   1  45.    1.9    2.6      2.6  5.0 15.0  2   0.0   0.0                        
+
+T O R C A O-   Xi    Xf    Tsd   TRd2 %dT   he b-nuc h-nuc Asw-1R AswMnNR  Asl-mn Asl-b Asl-h ComDia AdPla      M E N S A G E M    
+[tf,cm]        0.- 649.   0.05   6.31   5  7.8  12.1  62.1    0.0     0.0     0.0   0.0   0.0   0.24   N                                 
+
+-------------------------------   G  E  O  M  E  T  R  I  A       E      C  A  R  G  A  S    ------------------------------- 
+Vao= 2B /L=  0.88 /B= 0.20 /H=  0.70  /BCs= 0.00 /BCi= 0.00 /TpS=  1 /Esp.LS= 0.00 /Esp.LI= 0.00 FSp.Ex= 0.35 /FLt.Ex= 0.10   [M]
+--Solicitações provenientes de modelo de grelha e/ou pórtico espacial---  Estrut. Nós FIXOS  --- DeltaE=1.00   DeltaD=1.00  ---
+
+-    -    -    -    -    -   A  R  M  A  D  U  R  A  S   ( F L E X A O   E    C I S A L H A M E N T O )   -    -   -    -    - 
+FLEXAO  | M[-]=     3.92 tf* m                | As =   2.22   -SRAS-       [   2 B 12.5mm]                   
+BAL.DIR |                           x/d =0.04 | AsL=   0.00   -Arm.Lat.=[ 2 X  3 B  8.0mm]                   
+[tf,cm] | M[-]Min=  392.0      -  x/dMx =0.45 |                           CG=  3.6 cm          | % Baric.Armad.= 1        
+[ cm  ] | Esp,bar=   11.3      -              | Asmin =    2.1 cm2
+
+CISALHAMENTO-  Xi    Xf    Vsd   VRd2 MdC Ang. Asw[C] Aswmin Asw[C+T]  Bit  Esp NR AsTrt AsSus            M E N S A G E M 
+[tf,cm]        0.-  78.   1.82  76.91   1  45.    0.0    2.6      3.2  5.0 10.0  2   0.0   0.6                        
+
+T O R C A O-   Xi    Xf    Tsd   TRd2 %dT   he b-nuc h-nuc Asw-1R AswMnNR  Asl-mn Asl-b Asl-h ComDia AdPla      M E N S A G E M    
+[tf,cm]        0.-  78.   0.04   6.31   5  7.8  12.1  62.1    0.1     2.6     1.0   0.1   0.6   0.03   S                                 
+
+REAC. APOIO - No.   Maximos   Minimos   Largura    DEPEV  Morte    Nome     M.I.Mx M.I.Mn          Pilares:
+               1    12.481    10.375      0.20     0.00      0   P54        0.00   0.00     54      0      0      0      0      0
+               2    13.824    10.153      0.20     0.00      0   P55        0.00   0.00     55      0      0      0      0      0
+==================================================================================================================================
+
+Viga=  806  V806                           Eng.E=Nao /Eng.D=Nao /Repet= 1 /NAnd= 1 /Red V Ext=Nao /Fat.Alt=1.00 /Cob/S=2.5 0.0 CM
+
+-------------------------------   G  E  O  M  E  T  R  I  A       E      C  A  R  G  A  S    ------------------------------- 
+Vao= 1  /L=  2.02 /B= 0.20 /H=  0.70  /BCs= 0.00 /BCi= 0.00 /TpS=  1 /Esp.LS= 0.00 /Esp.LI= 0.00 FSp.Ex= 0.35 /FLt.Ex= 0.10   [M]
+--Solicitações provenientes de modelo de grelha e/ou pórtico espacial---  Estrut. Nós FIXOS  --- DeltaE=1.00   DeltaD=1.00  ---
+
+-    -    -    -    -    -   A  R  M  A  D  U  R  A  S   ( F L E X A O   E    C I S A L H A M E N T O )   -    -   -    -    - 
+FLEXAO-| E S Q U E R D A                         | M E I O   D O    V A O                     | D I R E I T A                        
+       | M.[-] =      0.0 tf* m                  | M.[+] Max=      6.4 tf* m - Abcis.= 202    | M.[-] =      0.0  tf* m
+[tf,cm]| As =   0.00  -SRAS-   [  0 B  8.0mm]    | AsL=   0.00   ------                       | As =   0.53  -SRAS- [  2 B  8.0mm]
+       | AsL=   0.00  ------       x/d  =0.00    | As =   3.22   -SRAS-  [  3 B 12.5mm ]      | AsL=   0.00  ------     x/d  =0.00
+       |                           x/dMx=0.45    | Arm.Lat.=[2 X  3 B  8.0mm] - LN=  4.1      |                         x/dMx=0.45
+       |                             CG=  3.4    |                                            |                           CG=  3.4
+[tf,cm]| M[-]Min =   392.0        BCs=     0.    | M[+]Min =   392.0                          | M[-]Min =   392.0      BCs=     0.
+[cm2  ]| Asapo[+]=  1.07                         |                              CG=  3.6      | Asapo[+]=  2.90                   
+[ cm  ]| Esp,bar =  12.2                         | Esp,bar  = 5.0                             | Esp,bar =  12.2                   
+[cm2  ]| Asmn,sup=   2.1                         | Asmn,inf =  2.1                            | Asmn,sup=   2.1                   
+
+CISALHAMENTO-  Xi    Xf    Vsd   VRd2 MdC Ang. Asw[C] Aswmin Asw[C+T]  Bit  Esp NR AsTrt AsSus            M E N S A G E M 
+[tf,cm]        0.- 171.   5.49  76.91   1  45.    0.0    2.6      2.6  5.0 15.0  2   0.0   0.0                        
+
+T O R C A O-   Xi    Xf    Tsd   TRd2 %dT   he b-nuc h-nuc Asw-1R AswMnNR  Asl-mn Asl-b Asl-h ComDia AdPla      M E N S A G E M    
+[tf,cm]        0.- 171.   0.06   6.31   5  7.8  12.1  62.1    0.0     0.0     0.0   0.0   0.0   0.08   N                                 
+
+REAC. APOIO - No.   Maximos   Minimos   Largura    DEPEV  Morte    Nome     M.I.Mx M.I.Mn          Pilares:
+               1     2.388     0.735      0.20     0.00      2   V803       0.00   0.00      0      0      0      0      0      0
+               2    -0.822    -3.808      1.00     0.29      0   P46        0.00   0.00     46      0      0      0      0      0
+==================================================================================================================================
+
+Viga=  807  V807                           Eng.E=Nao /Eng.D=Nao /Repet= 1 /NAnd= 1 /Red V Ext=Nao /Fat.Alt=1.00 /Cob/S=2.5 0.0 CM
+
+-------------------------------   G  E  O  M  E  T  R  I  A       E      C  A  R  G  A  S    ------------------------------- 
+Vao= 1  /L=  7.49 /B= 0.20 /H=  0.70  /BCs= 0.00 /BCi= 0.20 /TpS=  6 /Esp.LS= 0.00 /Esp.LI= 0.20 FSp.Ex= 0.35 /FLt.Ex= 0.10   [M]
+--Solicitações provenientes de modelo de grelha e/ou pórtico espacial---  Estrut. Nós FIXOS  --- DeltaE=1.00   DeltaD=1.00  ---
+
+-    -    -    -    -    -   A  R  M  A  D  U  R  A  S   ( F L E X A O   E    C I S A L H A M E N T O )   -    -   -    -    - 
+FLEXAO-| E S Q U E R D A                         | M E I O   D O    V A O                     | D I R E I T A                        
+       | M.[-] =     20.0 tf* m                  | M.[+] Max=     11.6 tf* m - Abcis.= 374    | M.[-] =      8.8  tf* m
+[tf,cm]| As =  10.83  -STAS-   [  6 B 16.0mm]    | AsL=   0.00   ------                       | As =   4.48  -STAS- [  4 B 12.5mm]
+       | AsL=   0.00  ------       x/d  =0.21    | As =   5.96   -SRAS-  [  3 B 16.0mm ]      | AsL=   0.00  ------     x/d  =0.09
+       |                           x/dMx=0.45    | Arm.Lat.=[2 X  3 B  8.0mm] - LN=  7.6      |                         x/dMx=0.45
+       |                             CG=  5.0    |                                            |                           CG=  3.6
+[tf,cm]| M[-]Min =   392.0        BCs=     0.    | M[+]Min =   392.0                          | M[-]Min =   392.0      BCs=     0.
+[cm2  ]| Asapo[+]=  1.49                         |                              CG=  3.8      | Asapo[+]=  1.49                   
+[ cm  ]| Esp,bar =   2.5                         | Esp,bar  = 4.5                             | Esp,bar =   2.9                   
+[cm2  ]| Asmn,sup=   2.1                         | Asmn,inf =  2.1                            | Asmn,sup=   2.1                   
+
+CISALHAMENTO-  Xi    Xf    Vsd   VRd2 MdC Ang. Asw[C] Aswmin Asw[C+T]  Bit  Esp NR AsTrt AsSus            M E N S A G E M 
+[tf,cm]        0.- 239.  20.35  76.22   1  45.    3.0    2.6      3.0  5.0 12.5  2   0.0   0.0                        
+             239.- 718.  13.40  76.91   1  45.    0.2    2.6      2.6  5.0 15.0  2   0.0   0.0                        
+
+T O R C A O-   Xi    Xf    Tsd   TRd2 %dT   he b-nuc h-nuc Asw-1R AswMnNR  Asl-mn Asl-b Asl-h ComDia AdPla      M E N S A G E M    
+[tf,cm]        0.- 239.   0.24   6.31   5  7.8  12.1  62.1    0.0     0.0     0.0   0.0   0.0   0.30   N                                 
+             239.- 718.   0.11   6.31   5  7.8  12.1  62.1    0.0     0.0     0.0   0.0   0.0   0.19   N                                 
+
+REAC. APOIO - No.   Maximos   Minimos   Largura    DEPEV  Morte    Nome     M.I.Mx M.I.Mn          Pilares:
+               1    14.517    11.667      1.00     0.29      0   P46        0.00   0.00     46      0      0      0      0      0
+               2     9.571     7.595      0.20     0.00      0   P37B       0.00   0.00    800      0      0      0      0      0
+==================================================================================================================================
+
+Viga=  808  V808                           Eng.E=Nao /Eng.D=Nao /Repet= 1 /NAnd= 1 /Red V Ext=Nao /Fat.Alt=1.00 /Cob/S=2.5 0.0 CM
+
+-------------------------------   G  E  O  M  E  T  R  I  A       E      C  A  R  G  A  S    ------------------------------- 
+Vao= 1  /L=  1.84 /B= 0.20 /H=  0.70  /BCs= 0.00 /BCi= 0.00 /TpS=  1 /Esp.LS= 0.00 /Esp.LI= 0.00 FSp.Ex= 0.35 /FLt.Ex= 0.10   [M]
+--Solicitações provenientes de modelo de grelha e/ou pórtico espacial---  Estrut. Nós FIXOS  --- DeltaE=1.00   DeltaD=1.00  ---
+
+-    -    -    -    -    -   A  R  M  A  D  U  R  A  S   ( F L E X A O   E    C I S A L H A M E N T O )   -    -   -    -    - 
+FLEXAO-| E S Q U E R D A                         | M E I O   D O    V A O                     | D I R E I T A                        
+       | M.[-] =      0.0 tf* m                  | M.[+] Max=      3.9 tf* m - Abcis.= 115    | M.[-] =      3.4  tf* m
+[tf,cm]| As =   0.00  -SRAS-   [  0 B  8.0mm]    | AsL=   0.00   ------                       | As =   2.22  -SRAS- [  2 B 12.5mm]
+       | AsL=   0.00  ------       x/d  =0.00    | As =   2.22   -SRAS-  [  2 B 12.5mm ]      | AsL=   0.00  ------     x/d  =0.04
+       |                           x/dMx=0.45    | Arm.Lat.=[2 X  3 B  8.0mm] - LN=  2.5      |                         x/dMx=0.45
+       |                             CG=  3.4    |                                            |                           CG=  3.6
+[tf,cm]| M[-]Min =   392.0        BCs=     0.    | M[+]Min =   392.0                          | M[-]Min =   392.0      BCs=     0.
+[cm2  ]| Asapo[+]=  0.70                         |                              CG=  3.6      | Asapo[+]=  2.22                   
+[ cm  ]| Esp,bar =  12.2                         | Esp,bar  =11.3                             | Esp,bar =  11.3                   
+[cm2  ]| Asmn,sup=   2.1                         | Asmn,inf =  2.1                            | Asmn,sup=   2.1                   
+
+CISALHAMENTO-  Xi    Xf    Vsd   VRd2 MdC Ang. Asw[C] Aswmin Asw[C+T]  Bit  Esp NR AsTrt AsSus            M E N S A G E M 
+[tf,cm]        0.- 153.   3.10  76.91   1  45.    0.0    2.6      2.6  5.0 15.0  2   0.0   0.0                        
+
+T O R C A O-   Xi    Xf    Tsd   TRd2 %dT   he b-nuc h-nuc Asw-1R AswMnNR  Asl-mn Asl-b Asl-h ComDia AdPla      M E N S A G E M    
+[tf,cm]        0.- 153.   0.05   6.31   5  7.8  12.1  62.1    0.1     2.6     1.0   0.1   0.6   0.05   S                                 
+
+-------------------------------   G  E  O  M  E  T  R  I  A       E      C  A  R  G  A  S    ------------------------------- 
+Vao= 2  /L=  3.60 /B= 0.20 /H=  0.70  /BCs= 0.00 /BCi= 0.00 /TpS=  1 /Esp.LS= 0.00 /Esp.LI= 0.00 FSp.Ex= 0.35 /FLt.Ex= 0.10   [M]
+--Solicitações provenientes de modelo de grelha e/ou pórtico espacial---  Estrut. Nós FIXOS  --- DeltaE=1.00   DeltaD=1.00  ---
+
+-    -    -    -    -    -   A  R  M  A  D  U  R  A  S   ( F L E X A O   E    C I S A L H A M E N T O )   -    -   -    -    - 
+FLEXAO-| E S Q U E R D A                         | M E I O   D O    V A O                     | D I R E I T A                        
+       | M.[-] =      3.4 tf* m                  | M.[+] Max=     10.6 tf* m - Abcis.= 218    | M.[-] =     14.7  tf* m
+[tf,cm]| As =   2.22  -SRAS-   [  2 B 12.5mm]    | AsL=   0.00   ------                       | As =   7.77  -SRAS- [  4 B 16.0mm]
+       | AsL=   0.00  ------       x/d  =0.04    | As =   5.51   -SRAS-  [  3 B 16.0mm ]      | AsL=   0.00  ------     x/d  =0.15
+       |                           x/dMx=0.45    | Arm.Lat.=[2 X  3 B  8.0mm] - LN=  6.9      |                         x/dMx=0.45
+       |                             CG=  3.9    |                                            |                           CG=  4.1
+[tf,cm]| M[-]Min =   392.0        BCs=     0.    | M[+]Min =   392.0                          | M[-]Min =   392.0      BCs=     0.
+[cm2  ]| Asapo[+]=  2.22                         |                              CG=  4.1      | Asapo[+]=  4.88                   
+[ cm  ]| Esp,bar =  10.9                         | Esp,bar  = 4.3                             | Esp,bar =   2.3                   
+[cm2  ]| Asmn,sup=   2.1                         | Asmn,inf =  2.1                            | Asmn,sup=   2.1                   
+
+CISALHAMENTO-  Xi    Xf    Vsd   VRd2 MdC Ang. Asw[C] Aswmin Asw[C+T]  Bit  Esp NR AsTrt AsSus            M E N S A G E M 
+[tf,cm]        0.- 138.  11.13  76.91   1  45.    0.0    2.6      2.6  8.0 20.0  2   0.0   0.0                        
+             138.- 224.  17.60  76.91   1  45.    1.9    2.6      8.6  8.0 10.0  2  11.4   6.1                        
+             224.- 318.  20.68  76.71   1  45.    3.1    2.6      5.6  8.0 15.0  2   0.0   0.0                        
+
+T O R C A O-   Xi    Xf    Tsd   TRd2 %dT   he b-nuc h-nuc Asw-1R AswMnNR  Asl-mn Asl-b Asl-h ComDia AdPla      M E N S A G E M    
+[tf,cm]        0.- 138.   0.01   6.31   5  7.8  12.1  62.1    0.0     2.6     1.0   0.1   0.6   0.15   S                                 
+             138.- 224.   0.03   6.31   5  7.8  12.1  62.1    0.1     2.6     1.0   0.1   0.6   0.23   S                                 
+             224.- 318.   0.33   6.31   5  7.8  12.1  62.1    0.5     2.6     1.0   0.1   0.6   0.32   S                                 
+
+REAC. APOIO - No.   Maximos   Minimos   Largura    DEPEV  Morte    Nome     M.I.Mx M.I.Mn          Pilares:
+               1     0.741    -1.064      0.20     0.00      2   V805       0.00   0.00      0      0      0      0      0      0
+               2     5.944     1.753      0.70     0.14      2   V804       0.00   0.00      0      0      0      0      0      0
+               3    14.770     9.271      0.70     0.14      0   P48        0.00   0.00     48      0      0      0      0      0
+==================================================================================================================================
+
+Viga=  809  V809                           Eng.E=Nao /Eng.D=Nao /Repet= 1 /NAnd= 1 /Red V Ext=Nao /Fat.Alt=1.00 /Cob/S=2.5 0.0 CM
+
+-------------------------------   G  E  O  M  E  T  R  I  A       E      C  A  R  G  A  S    ------------------------------- 
+Vao= 1  /L=  6.32 /B= 0.20 /H=  0.70  /BCs= 0.00 /BCi= 0.20 /TpS=  9 /Esp.LS= 0.00 /Esp.LI= 0.20 FSp.Ex= 0.35 /FLt.Ex= 0.10   [M]
+--Solicitações provenientes de modelo de grelha e/ou pórtico espacial---  Estrut. Nós FIXOS  --- DeltaE=1.00   DeltaD=1.00  ---
+
+-    -    -    -    -    -   A  R  M  A  D  U  R  A  S   ( F L E X A O   E    C I S A L H A M E N T O )   -    -   -    -    - 
+FLEXAO-| E S Q U E R D A                         | M E I O   D O    V A O                     | D I R E I T A                        
+       | M.[-] =     11.6 tf* m                  | M.[+] Max=      7.4 tf* m - Abcis.= 368    | M.[-] =      5.6  tf* m
+[tf,cm]| As =   5.96  -STAS-   [  3 B 16.0mm]    | AsL=   0.00   ------                       | As =   2.80  -STAS- [  3 B 12.5mm]
+       | AsL=   0.00  ------       x/d  =0.12    | As =   3.72   -SRAS-  [  3 B 12.5mm ]      | AsL=   0.00  ------     x/d  =0.05
+       |                           x/dMx=0.45    | Arm.Lat.=[2 X  3 B  8.0mm] - LN=  4.8      | Grampos Dir.= 1B  8.0mm x/dMx=0.45
+       |                             CG=  3.8    |                                            |                           CG=  3.6
+[tf,cm]| M[-]Min =   392.0        BCs=     0.    | M[+]Min =   392.0                          | M[-]Min =   392.0      BCs=     0.
+[cm2  ]| Asapo[+]=  0.93                         |                              CG=  3.6      | Asapo[+]=  2.69                   
+[ cm  ]| Esp,bar =   4.5                         | Esp,bar  = 5.0                             | Esp,bar =   5.0                   
+[cm2  ]| Asmn,sup=   2.1                         | Asmn,inf =  2.1                            | Asmn,sup=   2.1                   
+
+CISALHAMENTO-  Xi    Xf    Vsd   VRd2 MdC Ang. Asw[C] Aswmin Asw[C+T]  Bit  Esp NR AsTrt AsSus            M E N S A G E M 
+[tf,cm]        0.- 601.  13.78  76.91   1  45.    0.4    2.6      2.6  5.0 15.0  2   0.0   0.0                        
+
+T O R C A O-   Xi    Xf    Tsd   TRd2 %dT   he b-nuc h-nuc Asw-1R AswMnNR  Asl-mn Asl-b Asl-h ComDia AdPla      M E N S A G E M    
+[tf,cm]        0.- 601.   0.14   6.31   5  7.8  12.1  62.1    0.0     0.0     0.0   0.0   0.0   0.20   N                                 
+
+REAC. APOIO - No.   Maximos   Minimos   Largura    DEPEV  Morte    Nome     M.I.Mx M.I.Mn          Pilares:
+               1     9.828     7.864      0.70     0.14      0   P48        0.00   0.00     48      0      0      0      0      0
+               2     8.356     6.713      0.20     0.00      0   P38B       0.00   0.00    801      0      0      0      0      0
+==================================================================================================================================
+
