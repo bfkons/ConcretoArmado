@@ -1,4 +1,5 @@
 import math
+import sys
 
 class DadosProjeto:
     def __init__(self, fck=25, gama_c=1.4, fyk=500, gama_s=1.15, tipo_aco="CA-50", gamma_f=1.4):
@@ -49,22 +50,19 @@ def determinar_eta1(tipo_aco):
     else:
         raise ValueError("Tipo de aço inválido. Use CA-25, CA-50 ou CA-60.")
 
-def determinar_eta2(h_viga, cobrimento, posicao_barra):
-    """Determina o coeficiente eta2 com base na situação de aderência."""
-    # Lógica simplificada conforme NBR 6118:2023 para boa/má aderência em vigas
-    if posicao_barra.lower() == 'inferior':
-        # Boa aderência para armadura inferior se h < 60cm e barra a <= 30cm da face inferior
-        # ou h >= 60cm e barra a >= 30cm da face superior (o que é difícil para inferior)
-        # Simplificando: armadura inferior é geralmente boa aderência
+def determinar_eta2(h_viga, cobrimento, posicao_barra_int):
+    """Determina o coeficiente eta2 com base na situação de aderência.
+    posicao_barra_int: 1 para inferior, 2 para superior.
+    """
+    if posicao_barra_int == 1: # Inferior
         return 1.0 
-    elif posicao_barra.lower() == 'superior':
-        # Má aderência para armadura superior se h >= 60cm e barra a < 30cm da face superior
+    elif posicao_barra_int == 2: # Superior
         if h_viga >= 60 and cobrimento < 30:
             return 0.7 # Má aderência
         else:
             return 1.0 # Boa aderência (se h < 60cm ou cobrimento > 30cm)
     else:
-        raise ValueError("Posição da barra inválida. Use 'inferior' ou 'superior'.")
+        raise ValueError("Posição da barra inválida. Use 1 para inferior ou 2 para superior.")
 
 def determinar_eta3(phi):
     """Determina o coeficiente eta3 com base no diâmetro da barra."""
@@ -122,7 +120,7 @@ def calcular_lb_nec(alpha, lb, Fs_tf, gamma_f, As_ef_cm2, fyd):
         return 0.0
 
     # Calcular o termo (F_ancorar / Fsd_resistencia_armadura)
-    # Evitar divisão por zero se As_ef_mm2 * fyd for 0 (o que não deve acontecer com armadura real)
+    # Evitar divisão por zero se Fsd_resistencia_armadura for 0 (o que não deve acontecer com armadura real)
     if Fsd_resistencia_armadura == 0:
         raise ValueError("Área de aço efetiva ou fyd não podem ser zero para calcular lb_nec.")
 
@@ -130,7 +128,54 @@ def calcular_lb_nec(alpha, lb, Fs_tf, gamma_f, As_ef_cm2, fyd):
 
     return alpha * lb * termo_forca
 
-def verificar_ancoragem():
+def calcular_as_ef_min(alpha, lb, Fs_tf, gamma_f, fyd, comprimento_disponivel):
+    """Calcula a área de aço efetiva mínima necessária para ancorar o esforço de tração existente.
+    Retorna As_ef_min em cm².
+    """
+    if comprimento_disponivel <= 0:
+        return float('inf') # Comprimento disponível inválido
+
+    # Converter Fs de tf para kN (1 tf = 9.80665 kN)
+    Fs_kN = Fs_tf * 9.80665
+    
+    # Calcular o esforço de tração de cálculo (Fsd) em N
+    Fsd_calc_N = Fs_kN * gamma_f * 1000
+
+    # A partir de lb_nec = alpha * lb * (F_ancorar / (As_ef_mm2 * fyd))
+    # Queremos que lb_nec <= comprimento_disponivel
+    # comprimento_disponivel = alpha * lb * (F_ancorar / (As_ef_mm2 * fyd))
+    # As_ef_mm2 = (alpha * lb * F_ancorar) / (comprimento_disponivel * fyd)
+
+    # F_ancorar aqui é o Fsd_calc_N, pois estamos buscando o As_ef mínimo para ancorar essa força
+    # Certificar-se de que fyd não é zero para evitar divisão por zero
+    if fyd == 0:
+        return float('inf')
+
+    As_ef_mm2_min = (alpha * lb * Fsd_calc_N) / (comprimento_disponivel * fyd)
+
+    return As_ef_mm2_min / 100 # Converter para cm²
+
+def sugerir_armadura_gancho(As_necessaria_cm2):
+    """Sugere uma combinação de barras com ganchos para a área de aço necessária."
+    Areas de aço para diâmetros comuns (em cm²)
+    """
+    areas_barras = {
+        5.0: 0.196,
+        6.3: 0.312,
+        8.0: 0.503,
+        10.0: 0.785,
+    }
+
+    sugestoes = []
+    for phi_mm in sorted(areas_barras.keys(), reverse=True):
+        area_por_barra = areas_barras[phi_mm]
+        if area_por_barra > 0:
+            num_barras = math.ceil(As_necessaria_cm2 / area_por_barra)
+            if num_barras > 0:
+                sugestoes.append(f"{num_barras} barras de Ø{phi_mm} mm (As = {num_barras * area_por_barra:.3f} cm²)")
+    return sugestoes
+
+def main():
     print("\n--- Verificação de Ancoragem de Armaduras Tracionadas (NBR 6118:2023) ---")
 
     projeto = DadosProjeto()
@@ -153,17 +198,25 @@ def verificar_ancoragem():
             phi = float(input("Diâmetro da barra phi (mm): "))
             h_viga = float(input("Altura da viga h (cm): "))
             cobrimento = float(input("Cobrimento da armadura (cm): "))
-            posicao_barra = input("Posição da barra ('inferior' ou 'superior'): ")
+            posicao_barra_input = int(input("Posição da barra (1=Inferior ou 2=Superior): "))
+            
+            if posicao_barra_input == 1:
+                posicao_barra_str = 'inferior'
+            elif posicao_barra_input == 2:
+                posicao_barra_str = 'superior'
+            else:
+                print("Erro: Posição da barra inválida. Use 1 ou 2.")
+                continue
+
             com_gancho_str = input("A barra possui gancho? (s/n): ")
             com_gancho = True if com_gancho_str.lower() == 's' else False
             As_ef_cm2 = float(input("Área de aço efetiva As,ef (cm²): "))
             Fs_tf = float(input("Força de tração atuante na armadura Fs (tf): "))
             comprimento_disponivel = float(input("Comprimento reto de ancoragem disponível na viga (mm): "))
 
-            # Cálculos
             fctd = calcular_fctd(projeto.fck, projeto.gama_c)
             eta1 = determinar_eta1(projeto.tipo_aco)
-            eta2 = determinar_eta2(h_viga, cobrimento, posicao_barra)
+            eta2 = determinar_eta2(h_viga, cobrimento, posicao_barra_input)
             eta3 = determinar_eta3(phi)
             fbd = calcular_fbd(eta1, eta2, eta3, fctd)
             fyd = calcular_fyd(projeto.fyk, projeto.gama_s)
@@ -177,12 +230,11 @@ def verificar_ancoragem():
                 print(f"Erro no cálculo de lb_nec: {e}")
                 continue
 
-            # Saída
             print("\n--- Resultados do Cálculo ---")
             print(f"fck: {projeto.fck} MPa, gama_c: {projeto.gama_c}")
             print(f"fyk: {projeto.fyk} MPa, gama_s: {projeto.gama_s}, tipo_aco: {projeto.tipo_aco}")
             print(f"gamma_f: {projeto.gamma_f}")
-            print(f"phi: {phi} mm, h_viga: {h_viga} cm, cobrimento: {cobrimento} cm, posicao_barra: {posicao_barra}")
+            print(f"phi: {phi} mm, h_viga: {h_viga} cm, cobrimento: {cobrimento} cm, posicao_barra: {posicao_barra_str}")
             print(f"com_gancho: {com_gancho}, As_ef: {As_ef_cm2} cm², Fs: {Fs_tf} tf")
             print(f"Comprimento disponível: {comprimento_disponivel:.2f} mm")
             print("-------------------------------------------------------------------")
@@ -203,11 +255,43 @@ def verificar_ancoragem():
             else:
                 print("STATUS: Ancoragem INSUFICIENTE.\n")
                 print("SUGESTÕES DE MELHORIA:")
+                
+                try:
+                    As_ef_min_cm2 = calcular_as_ef_min(alpha, lb, Fs_tf, projeto.gamma_f, fyd, comprimento_disponivel)
+                    print(f"- Área de aço efetiva mínima necessária para ancoragem: {As_ef_min_cm2:.3f} cm²")
+                except ValueError as e:
+                    print(f"- Não foi possível calcular a As_ef mínima: {e}")
+
                 if not com_gancho:
-                    print("- Considerar o uso de ganchos para reduzir o comprimento de ancoragem necessário (alpha = 0.7). ")
-                print("- Aumentar o comprimento de ancoragem disponível na viga.")
-                print("- Aumentar a área de aço efetiva (As,ef) ou otimizar a relação As_ef/As_calc.")
-                print("- Verificar a situação de aderência (boa/má) e, se possível, otimizar a posição da barra.")
+                    print("\n- Tentando resolver com o uso de ganchos...")
+                    alpha_com_gancho = calcular_alpha(True) # Recalcula alpha para gancho
+                    try:
+                        lb_nec_com_gancho = calcular_lb_nec(alpha_com_gancho, lb, Fs_tf, projeto.gamma_f, As_ef_cm2, fyd)
+                        print(f"  lb_nec com gancho: {lb_nec_com_gancho:.2f} mm")
+
+                        if comprimento_disponivel >= lb_nec_com_gancho:
+                            print("  Com o uso de ganchos, a ancoragem se tornaria SEGURA.")
+                            As_ef_min_com_gancho_cm2 = calcular_as_ef_min(alpha_com_gancho, lb, Fs_tf, projeto.gamma_f, fyd, comprimento_disponivel)
+                            print(f"  Área de aço efetiva mínima necessária com ganchos: {As_ef_min_com_gancho_cm2:.3f} cm²")
+                            
+                            sugestoes_armadura = sugerir_armadura_gancho(As_ef_min_com_gancho_cm2)
+                            if sugestoes_armadura:
+                                print("  Sugestões de armadura com ganchos:")
+                                for s in sugestoes_armadura:
+                                    print(f"    - {s}")
+                            else:
+                                print("  Não foi possível gerar sugestões de armadura com ganchos para os diâmetros disponíveis.")
+                        else:
+                            print("  Mesmo com ganchos, a ancoragem ainda seria INSUFICIENTE.")
+                            print("- Aumentar o comprimento de ancoragem disponível na viga.")
+                            print("- Aumentar a área de aço efetiva (As,ef).")
+                            print("- Verificar a situação de aderência (boa/má) e, se possível, otimizar a posição da barra.")
+                    except ValueError as e:
+                        print(f"  Erro ao recalcular lb_nec com gancho: {e}")
+                else:
+                    print("- Aumentar o comprimento de ancoragem disponível na viga.")
+                    print("- Aumentar a área de aço efetiva (As,ef).")
+                    print("- Verificar a situação de aderência (boa/má) e, se possível, otimizar a posição da barra.")
             print("-------------------------------------------------------------------")
         elif escolha == '4':
             print("Saindo da aplicação.")
@@ -216,5 +300,4 @@ def verificar_ancoragem():
             print("Opção inválida. Por favor, tente novamente.")
 
 if __name__ == "__main__":
-    verificar_ancoragem()
-
+    main()
