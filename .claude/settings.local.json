@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/TQS/MVK0425_EST-CA_Parte 02_ver000_rev001_Vigas AsTrt e AsSus/Pavimento Ático/VIGAS/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
