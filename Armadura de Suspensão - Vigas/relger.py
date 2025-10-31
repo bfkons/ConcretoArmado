@@ -177,6 +177,68 @@ def extrair_geometrias_vigas(linhas):
     return geometrias
 
 
+def extrair_geometria_completa_viga(linhas, ref_viga):
+    """
+    Extrai geometria completa de uma viga específica: vãos e apoios
+
+    Args:
+        linhas: Lista de linhas do RELGER.LST
+        ref_viga: Referência da viga (ex: V609)
+
+    Returns:
+        dict: {
+            'vaos': [{'numero': '1B', 'L': 235.0, 'BCs': 0.0, 'BCi': 0.0}, ...],
+            'xi_acumulado_por_vao': {'1B': 0.0, '2': 295.0, '3B': 675.0, ...}
+        }
+    """
+    vaos = []
+    viga_encontrada = False
+
+    for i, linha in enumerate(linhas):
+        if 'Viga=' in linha and ref_viga in linha:
+            viga_encontrada = True
+            continue
+
+        if viga_encontrada and 'Vao=' in linha:
+            # Extrair número do vão e comprimento
+            # Formato: Vao= 1B /L=  2.35 /B= 0.20 /H=  1.15  /BCs= 0.00 /BCi= 0.00
+            match_vao = re.search(r'Vao=\s*(\w+)', linha)
+            match_L = re.search(r'/L=\s*([\d.]+)', linha)
+            match_BCs = re.search(r'/BCs=\s*([\d.]+)', linha)
+            match_BCi = re.search(r'/BCi=\s*([\d.]+)', linha)
+
+            if match_vao and match_L:
+                num_vao = match_vao.group(1).strip()
+                L_m = float(match_L.group(1))
+                BCs_m = float(match_BCs.group(1)) if match_BCs else 0.0
+                BCi_m = float(match_BCi.group(1)) if match_BCi else 0.0
+
+                vaos.append({
+                    'numero': num_vao,
+                    'L': L_m * 100.0,  # converter para cm
+                    'BCs': BCs_m * 100.0,
+                    'BCi': BCi_m * 100.0
+                })
+
+        # Parar quando encontrar próxima viga ou fim
+        if viga_encontrada and linha.startswith('Viga=') and ref_viga not in linha:
+            break
+
+    # Calcular Xi acumulado no INÍCIO de cada vão
+    xi_acumulado_por_vao = {}
+    xi_atual = 0.0
+
+    for vao in vaos:
+        xi_acumulado_por_vao[vao['numero']] = xi_atual
+        # Para próximo vão: somar comprimento deste vão + largura apoio direito
+        xi_atual += vao['L'] + vao['BCs']
+
+    return {
+        'vaos': vaos,
+        'xi_acumulado_por_vao': xi_acumulado_por_vao
+    }
+
+
 
 def calcular_xi_acumulado_apoios(apoios, coords_hospedeira):
     """
@@ -301,16 +363,19 @@ def carregar_mapeamento_apoios(pasta_pavimento):
         return {}, {}
 
 
-def determinar_viga_apoiada_espacial(viga_hospedeira, xi_trecho, mapeamento_apoios, geometrias, coords_hospedeiras):
+def determinar_viga_apoiada_espacial(viga_hospedeira, xi_local, mapeamento_apoios, geometrias, coords_hospedeiras,
+                                     vao_numero=None, linhas=None):
     """
     Determina qual viga apoiada corresponde usando Xi do trecho
 
     Args:
         viga_hospedeira: Referência da viga hospedeira (ex: V649)
-        xi_trecho: Posição Xi do início do trecho do RELGER (cm)
+        xi_local: Posição Xi LOCAL dentro do vão do RELGER (cm)
         mapeamento_apoios: Dicionário com apoios por viga hospedeira
         geometrias: Dicionário com larguras das vigas
         coords_hospedeiras: Dict {viga: [(x1,y1), (x2,y2), ...]}
+        vao_numero: Número do vão atual (ex: '1B', '2', '3B')
+        linhas: Lista de linhas do RELGER.LST
 
     Returns:
         tuple: (viga_apoiada, largura_cm, x_apoio, y_apoio) ou (None, None, None, None)
@@ -328,6 +393,16 @@ def determinar_viga_apoiada_espacial(viga_hospedeira, xi_trecho, mapeamento_apoi
     if not coords:
         # SEM FALLBACK: se coordenadas não disponíveis, retornar None
         return None, None, None, None
+
+    # Calcular Xi ACUMULADO do trecho
+    xi_trecho = xi_local  # Default: usar Xi local
+
+    if vao_numero and linhas:
+        # Extrair geometria completa da viga
+        geom = extrair_geometria_completa_viga(linhas, viga_hospedeira)
+        if geom and 'xi_acumulado_por_vao' in geom:
+            xi_inicio_vao = geom['xi_acumulado_por_vao'].get(vao_numero, 0.0)
+            xi_trecho = xi_inicio_vao + xi_local
 
     # Calcular Xi acumulado de cada apoio
     apoios_com_xi = calcular_xi_acumulado_apoios(apoios, coords)
@@ -381,6 +456,7 @@ def processar_relger(caminho_arquivo, mapeamento_apoios=None, coords_hospedeiras
 
     viga_atual = None
     secao_atual = None
+    vao_atual = None
     mapa_colunas = None
     procurar_dados_cisalhamento = False
 
@@ -390,6 +466,12 @@ def processar_relger(caminho_arquivo, mapeamento_apoios=None, coords_hospedeiras
 
         elif '/B=' in linha and '/H=' in linha:
             secao_atual = extrair_secao(linha)
+
+        elif 'Vao=' in linha:
+            # Extrair número do vão: "Vao= 1B" -> "1B"
+            match = re.search(r'Vao=\s*(\S+)', linha)
+            if match:
+                vao_atual = match.group(1)
 
         elif 'CISALHAMENTO-' in linha and 'AsTrt' in linha:
             mapa_colunas = mapear_colunas_cisalhamento(linha)
@@ -413,7 +495,8 @@ def processar_relger(caminho_arquivo, mapeamento_apoios=None, coords_hospedeiras
                     # Usar determinação espacial com Xi
                     if mapeamento_apoios and viga_atual in mapeamento_apoios:
                         viga_apoiada_nome, a_cm, x_apoio, y_apoio = determinar_viga_apoiada_espacial(
-                            viga_atual, dados['xi'], mapeamento_apoios, geometrias, coords_hospedeiras
+                            viga_atual, dados['xi'], mapeamento_apoios, geometrias, coords_hospedeiras,
+                            vao_numero=vao_atual, linhas=linhas
                         )
 
                     # Buscar seção completa da viga apoiada
