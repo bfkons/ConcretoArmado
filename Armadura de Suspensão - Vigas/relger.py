@@ -93,8 +93,9 @@ def mapear_colunas_cisalhamento(linha_cabecalho):
 
 def extrair_valores_por_posicao(linha_dados, mapa_colunas):
     """
-    Extrai valores da linha de dados usando as posições mapeadas das colunas
-    Retorna dicionário com Aswmin, Asw[C+T], AsTrt, AsSus
+    Parser TOTALMENTE FLEXIVEL por TOKENS - aceita colunas ausentes (assume 0.0)
+    Usa ordem relativa das colunas do cabecalho para mapear tokens da linha de dados
+    Retorna dicionario com Xi, Aswmin, Asw[C+T], AsTrt, AsSus
     """
     if not mapa_colunas:
         return None
@@ -103,43 +104,55 @@ def extrair_valores_por_posicao(linha_dados, mapa_colunas):
     if linha_limpa.strip().startswith('[tf,cm]'):
         linha_limpa = linha_limpa.replace('[tf,cm]', '       ')
 
-    partes = linha_limpa.split()
-    if len(partes) < 14:
+    # Tokenizar linha de dados
+    tokens = linha_limpa.split()
+    if not tokens:
         return None
 
-    colunas_ordenadas = sorted(mapa_colunas.items(), key=lambda x: x[1][0])
+    # Cabecalho completo esperado (ordem fixa TQS)
+    cabecalho_completo = ['Xi', 'Xf', 'Vsd', 'VRd2', 'MdC', 'Ang.', 'Asw[C]', 'Aswmin', 'Asw[C+T]', 'Bit', 'Esp', 'NR', 'AsTrt', 'AsSus']
 
-    indices_col = {}
-    for idx, (nome_col, _) in enumerate(colunas_ordenadas):
-        if nome_col == 'Aswmin':
-            indices_col['aswmin'] = idx
-        elif nome_col == 'Asw[C+T]':
-            indices_col['asw_ct'] = idx
-        elif nome_col == 'AsTrt':
-            indices_col['astrt'] = idx
-        elif nome_col == 'AsSus':
-            indices_col['assus'] = idx
+    # Criar mapeamento: nome_coluna -> indice_token
+    # Usar mapa_colunas para saber quais colunas existem no cabecalho REAL
+    colunas_presentes = sorted(mapa_colunas.keys(), key=lambda c: mapa_colunas[c][0])
 
-    cabecalho_completo = 'Xi Xf Vsd VRd2 MdC Ang. Asw[C] Aswmin Asw[C+T] Bit Esp NR AsTrt AsSus'
-    tokens_cabecalho = cabecalho_completo.split()
+    # Mapear indices do cabecalho completo
+    indices_cabecalho = {}
+    for col in colunas_presentes:
+        if col in cabecalho_completo:
+            indices_cabecalho[col] = cabecalho_completo.index(col)
 
-    mapa_indices = {}
-    for nome_col in ['Aswmin', 'Asw[C+T]', 'AsTrt', 'AsSus']:
-        if nome_col in tokens_cabecalho:
-            idx = tokens_cabecalho.index(nome_col)
-            mapa_indices[nome_col] = idx
-
+    # Extrair valores por indice de token
+    # Xi pode vir no formato "135.-" (inicio do range), extrair so a parte numerica
     try:
-        dados = {
-            'xi': float(partes[0]),
-            'aswmin': float(partes[mapa_indices['Aswmin']]),
-            'asw_ct': float(partes[mapa_indices['Asw[C+T]']]),
-            'astrt': float(partes[mapa_indices['AsTrt']]),
-            'assus': float(partes[mapa_indices['AsSus']])
-        }
-        return dados
-    except (ValueError, IndexError, KeyError):
+        xi_str = tokens[0].split('-')[0] if '-' in tokens[0] else tokens[0]
+        xi = float(xi_str)
+    except (ValueError, IndexError):
         return None
+
+    def get_token_value(nome_col):
+        """Extrai valor do token na posicao da coluna, retorna 0.0 se ausente"""
+        if nome_col not in indices_cabecalho:
+            return 0.0
+
+        idx = indices_cabecalho[nome_col]
+        if idx >= len(tokens):
+            return 0.0
+
+        try:
+            return float(tokens[idx])
+        except ValueError:
+            return 0.0
+
+    dados = {
+        'xi': xi,
+        'aswmin': get_token_value('Aswmin'),
+        'asw_ct': get_token_value('Asw[C+T]'),
+        'astrt': get_token_value('AsTrt'),
+        'assus': get_token_value('AsSus')
+    }
+
+    return dados
 
 
 def extrair_geometrias_vigas(linhas):
@@ -374,7 +387,10 @@ def processar_relger(caminho_arquivo, mapeamento_apoios=None, coords_hospedeiras
             procurar_dados_cisalhamento = True
 
         elif procurar_dados_cisalhamento and viga_atual and secao_atual:
-            if linha.strip().startswith('[tf,cm]') or (linha.strip() and linha.strip()[0].isdigit()):
+            # Processar linha se: tem [tf,cm] OU tem conteudo (nao vazia)
+            linha_tem_dados = linha.strip() != '' and not linha.strip().startswith('T O R C A O')
+
+            if linha_tem_dados:
                 dados = extrair_valores_por_posicao(linha, mapa_colunas)
 
                 if dados and dados['astrt'] != 0.0:
@@ -416,8 +432,8 @@ def processar_relger(caminho_arquivo, mapeamento_apoios=None, coords_hospedeiras
                         'y_apoio': y_apoio
                     }
                     vigas_extraidas.append(registro)
-
-            elif linha.strip() == '' or 'Viga=' in linha:
+            else:
+                # Linha vazia ou secao TORCAO - fim do bloco CISALHAMENTO
                 procurar_dados_cisalhamento = False
 
     return vigas_extraidas
