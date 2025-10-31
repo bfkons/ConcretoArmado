@@ -266,6 +266,13 @@ def calcular_xi_acumulado_apoios(apoios, coords_hospedeira):
     for apoio in apoios:
         xa, ya = apoio['x'], apoio['y']
 
+        # Se apoio não tem coordenadas, não calcular Xi
+        if xa is None or ya is None:
+            apoio_copia = apoio.copy()
+            apoio_copia['xi_acumulado'] = None
+            apoios_com_xi.append(apoio_copia)
+            continue
+
         # Encontrar em qual segmento o apoio esta
         melhor_xi = None
         menor_dist_ao_segmento = float('inf')
@@ -314,48 +321,178 @@ def calcular_xi_acumulado_apoios(apoios, coords_hospedeira):
     return apoios_com_xi
 
 
+def extrair_apoios_reac_apoio(linhas):
+    """
+    Extrai relações de apoio da seção REAC. APOIO do RELGER.LST
+
+    Args:
+        linhas: Lista de linhas do RELGER.LST
+
+    Returns:
+        dict: {viga_hospedeira: [lista_de_vigas_apoiadas]}
+        Exemplo: {'V654': ['V623', 'V622', 'V621', 'V620', 'V611', 'V609']}
+    """
+    apoios_relger = {}
+    viga_atual = None
+    em_reac_apoio = False
+
+    for linha in linhas:
+        # Detectar início de nova viga
+        if 'Viga=' in linha:
+            viga_atual = extrair_ref_viga(linha)
+            em_reac_apoio = False
+
+        # Detectar início da seção REAC. APOIO
+        elif viga_atual and 'REAC. APOIO' in linha:
+            em_reac_apoio = True
+
+        # Processar linhas da seção REAC. APOIO
+        elif viga_atual and em_reac_apoio:
+            # Fim da seção (linha de '=' ou nova viga)
+            if linha.startswith('=') or linha.startswith('Viga='):
+                em_reac_apoio = False
+                continue
+
+            # Procurar por nome de viga na linha (formato: V###)
+            # Linha típica: "   7    -7.884   -12.434      0.60     0.00      2   V620       0.00   0.00"
+            match = re.search(r'\s+(V\d+)\s+', linha)
+            if match:
+                viga_apoiada = match.group(1)
+
+                # Adicionar ao mapeamento
+                if viga_atual not in apoios_relger:
+                    apoios_relger[viga_atual] = []
+
+                # Evitar duplicatas
+                if viga_apoiada not in apoios_relger[viga_atual]:
+                    apoios_relger[viga_atual].append(viga_apoiada)
+
+    return apoios_relger
+
+
+def encontrar_vigas_apoiadas_por_hospedeira(viga_hospedeira, linhas):
+    """
+    Encontra todas as vigas que listam viga_hospedeira em sua seção REAC. APOIO
+
+    Lógica: Se viga_hospedeira tem AsTrt != 0, então existem vigas apoiadas nela.
+    Para encontrá-las, buscar viga_hospedeira nas seções REAC. APOIO de todas as outras vigas.
+
+    Args:
+        viga_hospedeira: Referência da viga com AsTrt != 0 (ex: 'V620')
+        linhas: Lista de linhas do RELGER.LST
+
+    Returns:
+        list: Lista de vigas que apoiam na hospedeira
+        Exemplo: ['V654'] significa que V654 apoia EM V620
+    """
+    apoios_relger = extrair_apoios_reac_apoio(linhas)
+
+    # Buscar viga_hospedeira nas listas de apoios de todas as outras vigas
+    vigas_apoiadas = []
+
+    for viga_atual, lista_apoios in apoios_relger.items():
+        if viga_hospedeira in lista_apoios:
+            vigas_apoiadas.append(viga_atual)
+
+    return vigas_apoiadas
+
+
+def validar_apoios_cruzado(mapeamento_tqs, apoios_relger):
+    """
+    Filtra apoios da API TQS usando validação cruzada com RELGER.LST
+    Mantém apenas apoios confirmados estruturalmente na seção REAC. APOIO
+
+    Lógica: Se viga_hospedeira tem apoio em viga_apoiada segundo API TQS,
+    então viga_apoiada deve listar viga_hospedeira em sua seção REAC. APOIO
+
+    Args:
+        mapeamento_tqs: Mapeamento da API TQS {viga_hospedeira: [apoios]}
+        apoios_relger: Apoios do RELGER {viga_apoiada: [vigas_hospedeiras]}
+
+    Returns:
+        dict: Mapeamento filtrado mantendo apenas apoios válidos
+    """
+    mapeamento_validado = {}
+
+    for viga_hospedeira, apoios_tqs in mapeamento_tqs.items():
+        # Filtrar apoios TQS: manter apenas os confirmados no RELGER
+        apoios_validados = []
+
+        for apoio in apoios_tqs:
+            viga_apoiada = apoio['viga_apoiada']
+
+            # Verificar se viga_apoiada lista viga_hospedeira em sua REAC. APOIO
+            vigas_hospedeiras_confirmadas = apoios_relger.get(viga_apoiada, [])
+
+            if viga_hospedeira in vigas_hospedeiras_confirmadas:
+                # Apoio confirmado: viga_apoiada lista viga_hospedeira em REAC. APOIO
+                apoios_validados.append(apoio)
+
+        # Adicionar ao mapeamento validado se houver apoios válidos
+        if apoios_validados:
+            mapeamento_validado[viga_hospedeira] = apoios_validados
+
+    return mapeamento_validado
+
+
 def carregar_mapeamento_apoios(pasta_pavimento):
     """
-    Carrega mapeamento de apoios E coordenadas processando API TQS
+    Carrega mapeamento de apoios usando RELGER.LST como fonte primária
+    API TQS é usada apenas para obter coordenadas espaciais (x, y)
     Retorna tupla: (mapeamento_apoios, coordenadas_vigas)
     """
-    print("\nProcessando apoios via API TQS...")
+    print("\nCarregando apoios do RELGER.LST (fonte primaria)...")
+
+    caminho_relger = os.path.join(pasta_pavimento, "VIGAS", "RELGER.LST")
+
+    if not os.path.exists(caminho_relger):
+        print(f"ERRO: RELGER.LST nao encontrado em {caminho_relger}")
+        return {}, {}
 
     try:
-        # Processar modelo TQS para obter apoios E coordenadas
-        # mapeamento_tqs: {viga_apoiada: [{'viga_hospedeira', 'x', 'y', 'morre'}, ...]}
+        # 1. Extrair apoios do RELGER (fonte primária)
+        with open(caminho_relger, 'r', encoding='latin-1') as f:
+            linhas_relger = f.readlines()
+
+        # Apenas usar coordenadas da API TQS
+        # Não precisa processar RELGER aqui, isso é feito em encontrar_vigas_apoiadas_por_hospedeira()
         mapeamento_tqs, coordenadas_vigas = nodes_vigas_tqs.mapear_apoios_vigas(pasta_pavimento)
 
-        if not mapeamento_tqs:
-            print("AVISO: Nenhum apoio detectado pela API TQS")
-            return {}, {}
-
-        # Criar mapeamento reverso: viga_hospedeira -> [(viga_apoiada, x, y), ...]
-        mapeamento_reverso = {}
-
+        # Criar índice da API TQS: viga_hospedeira -> {viga_apoiada: (x, y)}
+        coords_tqs = {}
         for viga_apoiada, lista_apoios in mapeamento_tqs.items():
-            # Agora lista_apoios é uma LISTA de dicts
             for apoio in lista_apoios:
                 viga_hospedeira = apoio['viga_hospedeira']
                 x = apoio['x']
                 y = apoio['y']
 
-                if viga_hospedeira not in mapeamento_reverso:
-                    mapeamento_reverso[viga_hospedeira] = []
+                if viga_hospedeira not in coords_tqs:
+                    coords_tqs[viga_hospedeira] = {}
 
-                mapeamento_reverso[viga_hospedeira].append({
+                coords_tqs[viga_hospedeira][viga_apoiada] = (x, y)
+
+        # Retornar mapeamento de coordenadas
+        # Formato: {viga_hospedeira: [{'viga_apoiada': nome, 'x': x, 'y': y}, ...]}
+        mapeamento_final = {}
+
+        for viga_hospedeira, apoios_dict in coords_tqs.items():
+            mapeamento_final[viga_hospedeira] = []
+            for viga_apoiada, (x, y) in apoios_dict.items():
+                mapeamento_final[viga_hospedeira].append({
                     'viga_apoiada': viga_apoiada,
                     'x': x,
                     'y': y
                 })
 
-        total_relacoes = sum(len(lista_apoios) for lista_apoios in mapeamento_tqs.values())
-        print(f"Apoios processados: {len(mapeamento_tqs)} vigas com {total_relacoes} relacoes detectadas")
-        return mapeamento_reverso, coordenadas_vigas
+        total_hospedeiras = len(mapeamento_final)
+        total_apoios = sum(len(apoios) for apoios in mapeamento_final.values())
+        print(f"Coordenadas TQS: {total_hospedeiras} vigas hospedeiras com {total_apoios} apoios")
+
+        return mapeamento_final, coordenadas_vigas
 
     except Exception as e:
         import traceback
-        print(f"ERRO: Falha ao processar API TQS:")
+        print(f"ERRO: Falha ao processar mapeamento de apoios:")
         print(f"  Tipo: {type(e).__name__}")
         print(f"  Mensagem: {e}")
         print(f"  Traceback:")
@@ -412,6 +549,10 @@ def determinar_viga_apoiada_espacial(viga_hospedeira, xi_local, mapeamento_apoio
     menor_diferenca = float('inf')
 
     for apoio in apoios_com_xi:
+        # Ignorar apoios sem Xi calculado (sem coordenadas)
+        if apoio['xi_acumulado'] is None:
+            continue
+
         diferenca = abs(apoio['xi_acumulado'] - xi_trecho)
         if diferenca < menor_diferenca:
             menor_diferenca = diferenca
@@ -464,10 +605,10 @@ def processar_relger(caminho_arquivo, mapeamento_apoios=None, coords_hospedeiras
         if 'Viga=' in linha:
             viga_atual = extrair_ref_viga(linha)
 
-        elif '/B=' in linha and '/H=' in linha:
+        if '/B=' in linha and '/H=' in linha:
             secao_atual = extrair_secao(linha)
 
-        elif 'Vao=' in linha:
+        if 'Vao=' in linha:
             # Extrair número do vão: "Vao= 1B" -> "1B"
             match = re.search(r'Vao=\s*(\S+)', linha)
             if match:
@@ -485,19 +626,40 @@ def processar_relger(caminho_arquivo, mapeamento_apoios=None, coords_hospedeiras
                 dados = extrair_valores_por_posicao(linha, mapa_colunas)
 
                 if dados and dados['astrt'] != 0.0:
-                    # Determinar 'a' (largura da viga apoiada) e seção da viga apoiada
+                    # LOGICA CORRETA: viga_atual COM AsTrt != 0 é a VIGA HOSPEDEIRA
+                    # Precisamos encontrar QUEM apoia EM viga_atual
+
                     a_cm = None
                     viga_apoiada_nome = None
                     secao_viga_apoiada = None
                     x_apoio = None
                     y_apoio = None
 
-                    # Usar determinação espacial com Xi
-                    if mapeamento_apoios and viga_atual in mapeamento_apoios:
-                        viga_apoiada_nome, a_cm, x_apoio, y_apoio = determinar_viga_apoiada_espacial(
-                            viga_atual, dados['xi'], mapeamento_apoios, geometrias, coords_hospedeiras,
-                            vao_numero=vao_atual, linhas=linhas
-                        )
+                    # Buscar vigas que listam viga_atual em seu REAC. APOIO
+                    vigas_candidatas = encontrar_vigas_apoiadas_por_hospedeira(viga_atual, linhas)
+
+                    if len(vigas_candidatas) == 1:
+                        # Apenas 1 viga apoia na hospedeira - não precisa de coordenadas
+                        viga_apoiada_nome = vigas_candidatas[0]
+                        a_cm = geometrias.get(viga_atual)  # Largura da hospedeira / 2
+                        if a_cm:
+                            a_cm = a_cm / 2.0
+
+                        # Tentar obter coordenadas se disponíveis
+                        if mapeamento_apoios and viga_atual in mapeamento_apoios:
+                            for apoio in mapeamento_apoios[viga_atual]:
+                                if apoio['viga_apoiada'] == viga_apoiada_nome:
+                                    x_apoio = apoio['x']
+                                    y_apoio = apoio['y']
+                                    break
+
+                    elif len(vigas_candidatas) > 1:
+                        # Múltiplas vigas apoiam - usar coordenadas + Xi para determinar
+                        if mapeamento_apoios and viga_atual in mapeamento_apoios:
+                            viga_apoiada_nome, a_cm, x_apoio, y_apoio = determinar_viga_apoiada_espacial(
+                                viga_atual, dados['xi'], mapeamento_apoios, geometrias, coords_hospedeiras,
+                                vao_numero=vao_atual, linhas=linhas
+                            )
 
                     # Buscar seção completa da viga apoiada
                     if viga_apoiada_nome:
