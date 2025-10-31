@@ -381,12 +381,17 @@ def mapear_apoios_vigas(pasta_pavimento):
         print("\nNENHUMA viga encontrada com nós marcados como APOIAVIGA")
     print("=" * 50)
 
-    # Mapear apoios
+    # Mapear apoios e coordenadas
     mapeamento = {}
+    coordenadas = {}
 
     for itemA in todas_vigas:
         beamA = itemA['beam']
         identA = itemA['ident']
+
+        # Armazenar coordenadas desta viga
+        coordenadas[identA] = itemA['coords']
+
         nA = beamA.NumNodes()
 
         for ino in range(nA):
@@ -429,7 +434,7 @@ def mapear_apoios_vigas(pasta_pavimento):
 
     print(f"Apoios mapeados: {len(mapeamento)}")
 
-    return mapeamento
+    return mapeamento, coordenadas
 
 
 def gerar_json(mapeamento, pasta_pavimento, caminho_saida=None):

@@ -164,70 +164,6 @@ def extrair_geometrias_vigas(linhas):
     return geometrias
 
 
-def extrair_coordenadas_vigas(pasta_pavimento):
-    """
-    Extrai coordenadas dos nos de todas as vigas usando API TQS
-    Retorna dicionario: {ref_viga: [(x1,y1), (x2,y2), ...]}
-    """
-    try:
-        mapeamento_tqs = nodes_vigas_tqs.mapear_apoios_vigas(pasta_pavimento)
-
-        # Processar modelo TQS para obter coordenadas de vigas
-        from pathlib import Path
-        from TQS import TQSModel, TQSBuild
-
-        pasta_pav = Path(pasta_pavimento)
-        pasta_edificio = pasta_pav.parent
-        nome_edificio = pasta_edificio.name
-
-        # Abrir edificio
-        build = TQSBuild.Building()
-        rc = build.RootFolder(nome_edificio)
-
-        if rc != 0:
-            arquivo_bde = pasta_edificio / "EDIFICIO.BDE"
-            if arquivo_bde.exists():
-                build.file.Open(str(arquivo_bde))
-                build.RootFolder(nome_edificio)
-
-        # Abrir modelo
-        model = TQSModel.Model()
-        model.file.OpenModel()
-
-        # Resolver pavimento
-        floor = nodes_vigas_tqs.resolver_pavimento_por_nome_de_pasta(model, pasta_pavimento)
-
-        if floor is None:
-            return {}
-
-        # Extrair coordenadas de todas as vigas
-        coords_vigas = {}
-        num_vigas = floor.iterator.GetNumObjects(TQSModel.TYPE_VIGAS)
-
-        for iobj in range(num_vigas):
-            beam = floor.iterator.GetObject(TQSModel.TYPE_VIGAS, iobj)
-            if beam is None:
-                continue
-
-            # Extrair referencia da viga
-            ident = beam.beamIdent
-            if ident.objectTitle and ident.objectTitle.strip():
-                ident_str = ident.objectTitle.strip()
-            else:
-                ident_str = f"V{ident.objectNumber}"
-
-            # Extrair coordenadas dos nos
-            coords, _ = nodes_vigas_tqs.segmentos_da_viga(beam)
-            coords_vigas[ident_str] = coords
-
-        return coords_vigas
-
-    except Exception as e:
-        print(f"AVISO: Erro ao extrair coordenadas de vigas: {e}")
-        return {}
-
-
-
 
 def calcular_xi_acumulado_apoios(apoios, coords_hospedeira):
     """
@@ -305,18 +241,18 @@ def calcular_xi_acumulado_apoios(apoios, coords_hospedeira):
 
 def carregar_mapeamento_apoios(pasta_pavimento):
     """
-    Carrega mapeamento de apoios processando API TQS
-    Retorna dicionário: {viga_hospedeira: [(viga_apoiada, x, y), ...]}
+    Carrega mapeamento de apoios E coordenadas processando API TQS
+    Retorna tupla: (mapeamento_apoios, coordenadas_vigas)
     """
     print("\nProcessando apoios via API TQS...")
 
     try:
-        # Processar modelo TQS para obter apoios
-        mapeamento_tqs = nodes_vigas_tqs.mapear_apoios_vigas(pasta_pavimento)
+        # Processar modelo TQS para obter apoios E coordenadas
+        mapeamento_tqs, coordenadas_vigas = nodes_vigas_tqs.mapear_apoios_vigas(pasta_pavimento)
 
         if not mapeamento_tqs:
             print("AVISO: Nenhum apoio detectado pela API TQS")
-            return {}
+            return {}, {}
 
         # Criar mapeamento reverso: viga_hospedeira -> [(viga_apoiada, x, y), ...]
         mapeamento_reverso = {}
@@ -336,11 +272,11 @@ def carregar_mapeamento_apoios(pasta_pavimento):
             })
 
         print(f"Apoios processados: {len(mapeamento_tqs)} relacoes detectadas")
-        return mapeamento_reverso
+        return mapeamento_reverso, coordenadas_vigas
 
     except Exception as e:
         print(f"AVISO: Erro ao processar API TQS: {e}")
-        return {}
+        return {}, {}
 
 
 def determinar_viga_apoiada_espacial(viga_hospedeira, xi_trecho, mapeamento_apoios, geometrias, coords_hospedeiras):
@@ -580,12 +516,8 @@ def processar_relger_completo():
     # Obter pasta do pavimento (pai de VIGAS)
     pasta_pavimento = str(Path(caminho_relger).parent.parent)
 
-    # ETAPA 1: Processar apoios via API TQS
-    mapeamento_apoios = carregar_mapeamento_apoios(pasta_pavimento)
-
-    # ETAPA 1.5: Extrair coordenadas das vigas
-    print("\nExtraindo coordenadas das vigas...")
-    coords_hospedeiras = extrair_coordenadas_vigas(pasta_pavimento)
+    # ETAPA 1: Processar apoios E coordenadas via API TQS
+    mapeamento_apoios, coords_hospedeiras = carregar_mapeamento_apoios(pasta_pavimento)
 
     # ETAPA 2: Processar RELGER.lst com mapeamento espacial
     print("\nProcessando RELGER.lst...")
