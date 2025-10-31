@@ -84,7 +84,7 @@ def solicitar_verificacao_tirante(viga: Dict, secao: Tuple[float, float]) -> Opt
 
     try:
         # Solicitar escolha
-        diametro_str = input("\nDigite o diametro desejado (5/6.3/8/10/12.5): ").strip()
+        diametro_str = input("\nDigite o diametro desejado (Ø5/Ø6.3/Ø8/Ø10/Ø12.5): ").strip()
         diametro_mm = utils_tirante.validar_diametro_escolhido(diametro_str)
 
         # Obter solução
@@ -138,8 +138,8 @@ def solicitar_verificacao_suspensao(viga: Dict, secao: Tuple[float, float], fato
     try:
         # Solicitar configuração de estribos
         print("Configuracao dos estribos distribuidos:")
-        print("  Formato: XX/YY (ex: 8/10 = phi 8mm a cada 10cm)")
-        print("  Formato: NRXX/YY (ex: 2R8/10 = 2 ramos, phi 8mm a cada 10cm)")
+        print("  Formato: XX/YY (ex: 8/10 = Ø8mm a cada 10cm)")
+        print("  Formato: NRXX/YY (ex: 4R8/10 = 4 ramos, Ø8mm a cada 10cm)")
         config_estribo = input("Digite a configuracao: ").strip()
 
         phi_mm, espacamento_cm, ramos = parsear_config_estribo(config_estribo)
@@ -203,8 +203,8 @@ def solicitar_verificacao_viga_apoiada(viga_apoio: Dict) -> Optional[Dict]:
     try:
         # Solicitar configuração de estribos EXISTENTES na viga apoiada
         print("Estribo EXISTENTE na viga apoiada:")
-        print("  Formato: XX/YY (ex: 8/10 = phi 8mm a cada 10cm)")
-        print("  Formato: NRXX/YY (ex: 2R8/10 = 2 ramos, phi 8mm a cada 10cm)")
+        print("  Formato: XX/YY (ex: 8/10 = Ø8mm a cada 10cm)")
+        print("  Formato: NRXX/YY (ex: 4R8/10 = 4 ramos, Ø8mm a cada 10cm)")
         config_estribo = input("Digite a configuracao do estribo existente: ").strip()
 
         phi_mm, espacamento_cm, ramos = parsear_config_estribo(config_estribo)
@@ -320,26 +320,26 @@ def salvar_relatorio(relatorio: str) -> bool:
         return False
 
 
-def executar_verificacoes_completas() -> bool:
+def executar_verificacoes_completas():
     """
     Função principal: executa verificações completas para todas as vigas
 
     Returns:
-        True se sucesso, False se erro
+        Lista de tuplas (viga_ref, relatorio_texto) se sucesso, None se erro
     """
     dados = carregar_json_vigas()
     if not dados:
-        return False
+        return None
 
     vigas = dados['vigas']
     if not vigas:
         print("\nNenhuma viga para verificar.")
-        return False
+        return None
 
     print(f"\n=== VERIFICACOES DE ARMADURA DE SUSPENSAO ===")
     print(f"Total de vigas: {len(vigas)}\n")
 
-    relatorios_completos = []
+    relatorios_completos = []  # Lista de tuplas (viga_ref, relatorio_texto)
 
     for i, viga in enumerate(vigas, 1):
         print(f"\n{'=' * 80}")
@@ -371,7 +371,7 @@ def executar_verificacoes_completas() -> bool:
 
             # Gerar relatório
             relatorio = gerar_relatorio_completo(viga, resultado_tirante, resultado_suspensao_apoio, resultado_suspensao_apoiada)
-            relatorios_completos.append(relatorio)
+            relatorios_completos.append((viga['ref'], relatorio))  # Tupla (viga_ref, relatorio_texto)
 
             # Exibir resumo
             print("\n" + "=" * 80)
@@ -383,15 +383,17 @@ def executar_verificacoes_completas() -> bool:
             print(f"\nErro ao processar viga {viga['ref']}: {e}")
             continue
 
-    # Salvar relatórios
+    # Salvar relatórios (opcional)
     if relatorios_completos:
         print(f"\n{'=' * 80}")
         print(f"VERIFICACOES CONCLUIDAS: {len(relatorios_completos)}/{len(vigas)} vigas")
         print(f"{'=' * 80}")
 
-        salvar = input("\nDeseja salvar o relatorio completo? (S/n): ").strip().lower()
+        salvar = input("\nDeseja salvar o relatorio individual agora? (S/n): ").strip().lower()
         if salvar != 'n':
-            relatorio_final = "\n\n".join(relatorios_completos)
+            # Extrair apenas os textos dos relatórios (índice 1 da tupla)
+            relatorios_texto = [rel[1] for rel in relatorios_completos]
+            relatorio_final = "\n\n".join(relatorios_texto)
             header = f"RELATORIO DE VERIFICACAO DE ARMADURA DE SUSPENSAO\n"
             header += f"Data: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}\n"
             header += f"Total de vigas: {len(relatorios_completos)}\n"
@@ -399,7 +401,7 @@ def executar_verificacoes_completas() -> bool:
 
             salvar_relatorio(header + relatorio_final)
 
-    return True
+    return relatorios_completos  # Retorna lista de tuplas (viga_ref, relatorio_texto)
 
 
 if __name__ == "__main__":
