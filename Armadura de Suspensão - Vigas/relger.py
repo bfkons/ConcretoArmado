@@ -353,9 +353,11 @@ def extrair_apoios_reac_apoio(linhas):
                 em_reac_apoio = False
                 continue
 
-            # Procurar por nome de viga na linha (formato: V###)
+            # Procurar por nome de viga na linha (formato: V### ou V###-A)
             # Linha típica: "   7    -7.884   -12.434      0.60     0.00      2   V620       0.00   0.00"
-            match = re.search(r'\s+(V\d+)\s+', linha)
+            # Também captura sufixos: V649-A, V649-B, etc
+            # Aceita espaços, tabs, ou caracteres de controle (como \x00) após o nome
+            match = re.search(r'\s+(V\d+(?:-[A-Z])?)[\ \t\x00]+', linha)
             if match:
                 viga_apoiada = match.group(1)
 
@@ -376,6 +378,7 @@ def encontrar_vigas_apoiadas_por_hospedeira(viga_hospedeira, linhas):
 
     Lógica: Se viga_hospedeira tem AsTrt != 0, então existem vigas apoiadas nela.
     Para encontrá-las, buscar viga_hospedeira nas seções REAC. APOIO de todas as outras vigas.
+    Também busca por aliases (V649 -> V649-A, V649-B)
 
     Args:
         viga_hospedeira: Referência da viga com AsTrt != 0 (ex: 'V620')
@@ -387,12 +390,23 @@ def encontrar_vigas_apoiadas_por_hospedeira(viga_hospedeira, linhas):
     """
     apoios_relger = extrair_apoios_reac_apoio(linhas)
 
-    # Buscar viga_hospedeira nas listas de apoios de todas as outras vigas
+    # Gerar aliases da viga hospedeira
+    # Ex: V649 -> ['V649', 'V649-A', 'V649-B']
+    match = re.search(r'V(\d+)', viga_hospedeira)
+    if match:
+        numero = match.group(1)
+        aliases = [f'V{numero}', f'V{numero}-A', f'V{numero}-B']
+    else:
+        aliases = [viga_hospedeira]
+
+    # Buscar viga_hospedeira (ou aliases) nas listas de apoios de todas as outras vigas
     vigas_apoiadas = []
 
     for viga_atual, lista_apoios in apoios_relger.items():
-        if viga_hospedeira in lista_apoios:
-            vigas_apoiadas.append(viga_atual)
+        for alias in aliases:
+            if alias in lista_apoios and viga_atual not in vigas_apoiadas:
+                vigas_apoiadas.append(viga_atual)
+                break
 
     return vigas_apoiadas
 
@@ -564,7 +578,10 @@ def determinar_viga_apoiada_espacial(viga_hospedeira, xi_local, mapeamento_apoio
     viga_apoiada = melhor_apoio['viga_apoiada']
     x_apoio = melhor_apoio['x']
     y_apoio = melhor_apoio['y']
-    largura_cm = geometrias.get(viga_apoiada)
+
+    # a_cm = largura da viga HOSPEDEIRA / 2
+    largura_hospedeira = geometrias.get(viga_hospedeira)
+    largura_cm = largura_hospedeira / 2.0 if largura_hospedeira else None
 
     return viga_apoiada, largura_cm, x_apoio, y_apoio
 
