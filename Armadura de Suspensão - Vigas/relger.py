@@ -9,6 +9,7 @@ import os
 from datetime import datetime
 from tkinter import Tk, filedialog
 from pathlib import Path
+import nodes_vigas_tqs
 
 
 def selecionar_pasta_pavimento():
@@ -215,11 +216,91 @@ def extrair_reacoes_apoio(linhas):
     return reacoes
 
 
-def processar_relger(caminho_arquivo):
+def carregar_mapeamento_apoios(pasta_pavimento):
+    """
+    Carrega mapeamento de apoios processando API TQS
+    Retorna dicionário: {viga_hospedeira: [(viga_apoiada, x, y), ...]}
+    """
+    print("\nProcessando apoios via API TQS...")
+
+    try:
+        # Processar modelo TQS para obter apoios
+        mapeamento_tqs = nodes_vigas_tqs.mapear_apoios_vigas(pasta_pavimento)
+
+        if not mapeamento_tqs:
+            print("AVISO: Nenhum apoio detectado pela API TQS")
+            return {}
+
+        # Criar mapeamento reverso: viga_hospedeira -> [(viga_apoiada, x, y), ...]
+        mapeamento_reverso = {}
+
+        for viga_apoiada, dados in mapeamento_tqs.items():
+            viga_hospedeira = dados['viga_hospedeira']
+            x = dados['x']
+            y = dados['y']
+
+            if viga_hospedeira not in mapeamento_reverso:
+                mapeamento_reverso[viga_hospedeira] = []
+
+            mapeamento_reverso[viga_hospedeira].append({
+                'viga_apoiada': viga_apoiada,
+                'x': x,
+                'y': y
+            })
+
+        print(f"Apoios processados: {len(mapeamento_tqs)} relacoes detectadas")
+        return mapeamento_reverso
+
+    except Exception as e:
+        print(f"AVISO: Erro ao processar API TQS: {e}")
+        return {}
+
+
+def determinar_viga_apoiada_espacial(viga_hospedeira, mapeamento_apoios, geometrias):
+    """
+    Determina qual viga apoiada corresponde usando coordenadas espaciais
+
+    Args:
+        viga_hospedeira: Referência da viga hospedeira (ex: V649)
+        mapeamento_apoios: Dicionário com apoios por viga hospedeira
+        geometrias: Dicionário com larguras das vigas
+
+    Returns:
+        tuple: (viga_apoiada, largura_cm, x_apoio, y_apoio) ou (None, None, None, None)
+    """
+    if viga_hospedeira not in mapeamento_apoios:
+        return None, None, None, None
+
+    apoios = mapeamento_apoios[viga_hospedeira]
+
+    if not apoios:
+        return None, None, None, None
+
+    # Se houver múltiplos apoios, pegar o primeiro (por enquanto)
+    # TODO: Usar posição Xi do trecho para determinar qual apoio específico
+    apoio = apoios[0]
+
+    viga_apoiada = apoio['viga_apoiada']
+    x_apoio = apoio['x']
+    y_apoio = apoio['y']
+
+    # Buscar largura da viga apoiada
+    largura_cm = geometrias.get(viga_apoiada, None)
+
+    return viga_apoiada, largura_cm, x_apoio, y_apoio
+
+
+def processar_relger(caminho_arquivo, mapeamento_apoios=None):
     """
     Processa o arquivo RELGER.lst e extrai dados de armadura de suspensão
     Retorna lista de dicionários com os dados extraídos
+
+    Args:
+        caminho_arquivo: Caminho para RELGER.lst
+        mapeamento_apoios: Mapeamento de apoios da API TQS (opcional)
     """
+    if mapeamento_apoios is None:
+        mapeamento_apoios = {}
     vigas_extraidas = []
 
     try:
@@ -258,27 +339,33 @@ def processar_relger(caminho_arquivo):
                     a_cm = None
                     viga_apoiada_nome = None
                     secao_viga_apoiada = None
+                    x_apoio = None
+                    y_apoio = None
 
-                    if viga_atual in reacoes_apoio:
-                        # Pegamos a primeira viga apoiada (pode ter múltiplas)
+                    # PRIORIDADE 1: Usar determinação espacial da API TQS
+                    if mapeamento_apoios and viga_atual in mapeamento_apoios:
+                        viga_apoiada_nome, a_cm, x_apoio, y_apoio = determinar_viga_apoiada_espacial(
+                            viga_atual, mapeamento_apoios, geometrias
+                        )
+
+                    # FALLBACK: Usar reações de apoio do RELGER.lst
+                    if not viga_apoiada_nome and viga_atual in reacoes_apoio:
                         vigas_apoiadas = reacoes_apoio[viga_atual]
                         if vigas_apoiadas:
                             viga_apoiada_nome = vigas_apoiadas[0]
                             if viga_apoiada_nome in geometrias:
                                 a_cm = geometrias[viga_apoiada_nome]
 
-                                # Buscar seção completa da viga apoiada
-                                # Procurar nas linhas já lidas para encontrar a seção dessa viga
-                                for linha_busca in linhas:
-                                    if f'Viga=' in linha_busca and viga_apoiada_nome in linha_busca:
-                                        # Encontrou a linha com a viga, próxima linha terá geometria
-                                        idx = linhas.index(linha_busca)
-                                        # Procurar linha de geometria nas próximas linhas
-                                        for j in range(idx, min(idx + 10, len(linhas))):
-                                            if '/B=' in linhas[j] and '/H=' in linhas[j]:
-                                                secao_viga_apoiada = extrair_secao(linhas[j])
-                                                break
+                    # Buscar seção completa da viga apoiada
+                    if viga_apoiada_nome:
+                        for linha_busca in linhas:
+                            if f'Viga=' in linha_busca and viga_apoiada_nome in linha_busca:
+                                idx = linhas.index(linha_busca)
+                                for j in range(idx, min(idx + 10, len(linhas))):
+                                    if '/B=' in linhas[j] and '/H=' in linhas[j]:
+                                        secao_viga_apoiada = extrair_secao(linhas[j])
                                         break
+                                break
 
                     registro = {
                         'ref': viga_atual,
@@ -289,7 +376,9 @@ def processar_relger(caminho_arquivo):
                         'assus': dados['assus'],
                         'a_cm': a_cm,
                         'viga_apoiada': viga_apoiada_nome,
-                        'secao_viga_apoiada': secao_viga_apoiada
+                        'secao_viga_apoiada': secao_viga_apoiada,
+                        'x_apoio': x_apoio,
+                        'y_apoio': y_apoio
                     }
                     vigas_extraidas.append(registro)
 
@@ -375,30 +464,40 @@ def carregar_json(caminho_json=None):
 def processar_relger_completo():
     """
     Função principal que executa todo o fluxo:
-    1. Seleção de pasta
-    2. Processamento do RELGER.lst
-    3. Geração do JSON
-    4. Exibição dos dados
+    1. Seleção de pasta do pavimento
+    2. Processamento de apoios via API TQS
+    3. Processamento do RELGER.lst com determinação espacial
+    4. Geração do JSON
+    5. Exibição dos dados
     """
-    print("\n=== PROCESSAMENTO DO RELGER.LST ===\n")
+    print("\n=== PROCESSAMENTO COMPLETO: API TQS + RELGER.LST ===\n")
 
     caminho_relger = selecionar_pasta_pavimento()
     if not caminho_relger:
         return False
 
     print(f"\nArquivo selecionado: {caminho_relger}")
-    print("Processando...")
 
-    dados = processar_relger(caminho_relger)
+    # Obter pasta do pavimento (pai de VIGAS)
+    pasta_pavimento = str(Path(caminho_relger).parent.parent)
+
+    # ETAPA 1: Processar apoios via API TQS
+    mapeamento_apoios = carregar_mapeamento_apoios(pasta_pavimento)
+
+    # ETAPA 2: Processar RELGER.lst com mapeamento espacial
+    print("\nProcessando RELGER.lst...")
+    dados = processar_relger(caminho_relger, mapeamento_apoios)
     if dados is None:
         return False
 
+    # ETAPA 3: Gerar JSON
     caminho_json = gerar_json(dados, caminho_relger)
     if not caminho_json:
         return False
 
     print(f"\nJSON gerado: {caminho_json}")
 
+    # ETAPA 4: Exibir dados
     exibir_dados(dados)
 
     return True

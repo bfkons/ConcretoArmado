@@ -3,7 +3,7 @@ Sistema de Verificação de Armadura de Suspensão em Vigas
 Baseado em NBR 6118
 
 Fluxo:
-1. Carregar e processar RELGER.lst do TQS
+1. Processar API TQS + RELGER.lst (determinação espacial integrada)
 2. Visualizar dados extraídos
 3. Realizar verificações de armadura de suspensão
 """
@@ -17,7 +17,6 @@ from datetime import datetime
 import relger
 import verificacoes_refatorado as verificacoes
 import relatorio_global
-import nodes_vigas_tqs
 
 
 def limpar_tela():
@@ -30,16 +29,15 @@ def exibir_menu():
     print("\n" + "="*60)
     print(" "*15 + "ARMADURA DE SUSPENSAO - VIGAS")
     print("="*60)
-    print("\n1. Carregar relatorio RELGER.lst")
+    print("\n1. Processar pavimento (API TQS + RELGER.lst)")
     print("2. Visualizar dados carregados")
     print("3. Verificar armaduras de suspensao (NBR 6118)")
-    print("4. Extrair apoios de vigas (API TQS)")
 
     # Mostrar opções de relatório global se houver relatórios
     if relatorio_global.existe_json_relatorios():
         num_relatorios = relatorio_global.contar_relatorios()
-        print(f"5. Visualizar relatorio global ({num_relatorios} viga(s))")
-        print("6. Salvar relatorio global em TXT")
+        print(f"4. Visualizar relatorio global ({num_relatorios} viga(s))")
+        print("5. Salvar relatorio global em TXT")
 
     print("0. Sair")
     print("\n" + "="*60)
@@ -103,24 +101,6 @@ def opcao_verificar_armaduras():
 
     except Exception as e:
         print(f"\nErro ao executar verificacoes: {e}")
-
-    input("\nPressione ENTER para continuar...")
-
-
-def opcao_extrair_apoios_tqs():
-    """Extrai apoios de vigas via API TQS"""
-    limpar_tela()
-
-    try:
-        sucesso = nodes_vigas_tqs.processar_modelo_tqs()
-
-        if sucesso:
-            print("\nExtracao de apoios concluida com sucesso.")
-        else:
-            print("\nExtracao de apoios nao foi concluida.")
-
-    except Exception as e:
-        print(f"\nErro ao extrair apoios: {e}")
 
     input("\nPressione ENTER para continuar...")
 
@@ -206,16 +186,13 @@ def main():
                     opcao_verificar_armaduras()
 
                 elif opcao == "4":
-                    opcao_extrair_apoios_tqs()
-
-                elif opcao == "5":
                     if relatorio_global.existe_json_relatorios():
                         opcao_visualizar_relatorio_global()
                     else:
                         print("\nOpcao invalida. Tente novamente.")
                         input("\nPressione ENTER para continuar...")
 
-                elif opcao == "6":
+                elif opcao == "5":
                     if relatorio_global.existe_json_relatorios():
                         opcao_salvar_relatorio_global()
                     else:
