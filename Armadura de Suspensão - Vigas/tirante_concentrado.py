@@ -87,7 +87,7 @@ def imprimir_relatorio_tirante(verificacao: VerificacaoTirante) -> str:
     linhas = []
     linhas.append("--- TIRANTE CONCENTRADO ---")
     linhas.append(f"  As,trt necessario (cm2)   : {verificacao.astrt_necessario_cm2:.2f}")
-    linhas.append(f"  Solucao adotada           : {verificacao.formatado}")
+    linhas.append(f"  Solucao adotada           : {verificacao.estribos} estribos Ø{verificacao.diametro_mm:.1f}mm")
     linhas.append(f"  Numero de estribos        : {verificacao.estribos}")
     linhas.append(f"  Total de ramos            : {verificacao.ramos_totais}")
     linhas.append(f"  As fornecido (cm2)        : {verificacao.as_fornecido_cm2:.2f}")

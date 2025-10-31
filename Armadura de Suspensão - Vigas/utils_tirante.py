@@ -118,7 +118,7 @@ def exibir_opcoes_tirante(astrt_cm2: float) -> None:
     for i, opcao in enumerate(opcoes, 1):
         print(f"  {i}. Ø{opcao['diametro_mm']:.1f}mm  → "
               f"{opcao['formatado']}  "
-              f"({opcao['ramos_totais']} ramos) = "
+              f"({opcao['estribos']} estribos Ø{opcao['diametro_mm']:.1f}mm) = "
               f"{opcao['as_fornecido_cm2']:.2f} cm2")
 
     print("-" * 60)
@@ -187,7 +187,7 @@ if __name__ == "__main__":
     print("\nSimulando escolha do usuario: diametro 8mm")
     solucao = obter_solucao_tirante(astrt, 8.0)
 
-    print(f"\nSolucao adotada: {solucao['formatado']} ({solucao['ramos_totais']} ramos)")
+    print(f"\nSolucao adotada: {solucao['estribos']} estribos Ø{solucao['diametro_mm']:.1f}mm")
     print(f"As fornecido: {solucao['as_fornecido_cm2']:.2f} cm2")
     print(f"As necessario: {solucao['astrt_necessario_cm2']:.2f} cm2")
     print(f"Status: {'ATENDE' if solucao['atende'] else 'NAO ATENDE'}")
