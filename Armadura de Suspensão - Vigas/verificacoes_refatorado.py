@@ -75,8 +75,8 @@ def solicitar_verificacao_tirante(viga: Dict, secao: Tuple[float, float]) -> Opt
     print("\n" + "=" * 80)
     print("VERIFICACAO 1: TIRANTE CONCENTRADO")
     print("=" * 80)
-    print(f"Viga: {viga['ref']}")
-    print(f"AsTrt necessario (do TQS): {viga['astrt']:.2f} cm2")
+    print(f"Viga: {viga['ref']} ({secao[0]:.0f}x{secao[1]:.0f})")
+    print(f"AsTrt necessario: {viga['astrt']:.2f} cm2")
     print("")
 
     # Exibir opções calculadas
