@@ -382,7 +382,8 @@ def mapear_apoios_vigas(pasta_pavimento):
     print("=" * 50)
 
     # Mapear apoios e coordenadas
-    mapeamento = {}
+    # IMPORTANTE: Cada viga pode ter MÚLTIPLOS apoios
+    mapeamento = {}  # {viga_apoiada: [{'viga_hospedeira', 'x', 'y', 'morre'}, ...]}
     coordenadas = {}
 
     for itemA in todas_vigas:
@@ -417,22 +418,30 @@ def mapear_apoios_vigas(pasta_pavimento):
                     # Classificar morre=2
                     morre = 2 if classifica_morre_no_segmento(xp, yp, itemB['coords']) else 0
 
-                    # Adicionar ao mapeamento
-                    mapeamento[identA] = {
-                        'viga_hospedeira': identB,
-                        'x': xp,
-                        'y': yp,
-                        'morre': morre
-                    }
+                    # Adicionar ao mapeamento (pode ter múltiplos apoios)
+                    if identA not in mapeamento:
+                        mapeamento[identA] = []
 
-                    # Parar busca após encontrar hospedeira
+                    # Verificar se já não adicionamos este apoio (evitar duplicatas)
+                    apoio_existente = False
+                    for apoio in mapeamento[identA]:
+                        if apoio['viga_hospedeira'] == identB:
+                            apoio_existente = True
+                            break
+
+                    if not apoio_existente:
+                        mapeamento[identA].append({
+                            'viga_hospedeira': identB,
+                            'x': xp,
+                            'y': yp,
+                            'morre': morre
+                        })
+
+                    # Parar busca de segmentos após encontrar (mas continuar testando outras vigas)
                     break
 
-                # Se já encontrou, não precisa testar outras vigas
-                if identA in mapeamento:
-                    break
-
-    print(f"Apoios mapeados: {len(mapeamento)}")
+    total_apoios = sum(len(apoios) for apoios in mapeamento.values())
+    print(f"Apoios mapeados: {len(mapeamento)} vigas com {total_apoios} apoios no total")
 
     return mapeamento, coordenadas
 

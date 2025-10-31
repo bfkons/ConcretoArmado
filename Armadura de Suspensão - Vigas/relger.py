@@ -261,6 +261,7 @@ def carregar_mapeamento_apoios(pasta_pavimento):
 
     try:
         # Processar modelo TQS para obter apoios E coordenadas
+        # mapeamento_tqs: {viga_apoiada: [{'viga_hospedeira', 'x', 'y', 'morre'}, ...]}
         mapeamento_tqs, coordenadas_vigas = nodes_vigas_tqs.mapear_apoios_vigas(pasta_pavimento)
 
         if not mapeamento_tqs:
@@ -270,25 +271,33 @@ def carregar_mapeamento_apoios(pasta_pavimento):
         # Criar mapeamento reverso: viga_hospedeira -> [(viga_apoiada, x, y), ...]
         mapeamento_reverso = {}
 
-        for viga_apoiada, dados in mapeamento_tqs.items():
-            viga_hospedeira = dados['viga_hospedeira']
-            x = dados['x']
-            y = dados['y']
+        for viga_apoiada, lista_apoios in mapeamento_tqs.items():
+            # Agora lista_apoios é uma LISTA de dicts
+            for apoio in lista_apoios:
+                viga_hospedeira = apoio['viga_hospedeira']
+                x = apoio['x']
+                y = apoio['y']
 
-            if viga_hospedeira not in mapeamento_reverso:
-                mapeamento_reverso[viga_hospedeira] = []
+                if viga_hospedeira not in mapeamento_reverso:
+                    mapeamento_reverso[viga_hospedeira] = []
 
-            mapeamento_reverso[viga_hospedeira].append({
-                'viga_apoiada': viga_apoiada,
-                'x': x,
-                'y': y
-            })
+                mapeamento_reverso[viga_hospedeira].append({
+                    'viga_apoiada': viga_apoiada,
+                    'x': x,
+                    'y': y
+                })
 
-        print(f"Apoios processados: {len(mapeamento_tqs)} relacoes detectadas")
+        total_relacoes = sum(len(lista_apoios) for lista_apoios in mapeamento_tqs.values())
+        print(f"Apoios processados: {len(mapeamento_tqs)} vigas com {total_relacoes} relacoes detectadas")
         return mapeamento_reverso, coordenadas_vigas
 
     except Exception as e:
-        print(f"AVISO: Erro ao processar API TQS: {e}")
+        import traceback
+        print(f"ERRO: Falha ao processar API TQS:")
+        print(f"  Tipo: {type(e).__name__}")
+        print(f"  Mensagem: {e}")
+        print(f"  Traceback:")
+        traceback.print_exc()
         return {}, {}
 
 
