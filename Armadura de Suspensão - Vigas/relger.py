@@ -131,6 +131,7 @@ def extrair_valores_por_posicao(linha_dados, mapa_colunas):
 
     try:
         dados = {
+            'xi': float(partes[0]),
             'aswmin': float(partes[mapa_indices['Aswmin']]),
             'asw_ct': float(partes[mapa_indices['Asw[C+T]']]),
             'astrt': float(partes[mapa_indices['AsTrt']]),
@@ -163,57 +164,143 @@ def extrair_geometrias_vigas(linhas):
     return geometrias
 
 
-def extrair_reacoes_apoio(linhas):
+def extrair_coordenadas_vigas(pasta_pavimento):
     """
-    Extrai relações de apoio entre vigas da seção REAC. APOIO
-    Retorna dicionário: {viga_apoio: [vigas_apoiadas]}
-    Considera apenas Morte=2 (apoio em viga)
+    Extrai coordenadas dos nos de todas as vigas usando API TQS
+    Retorna dicionario: {ref_viga: [(x1,y1), (x2,y2), ...]}
     """
-    reacoes = {}
-    viga_atual = None
-    procurar_reacoes = False
+    try:
+        mapeamento_tqs = nodes_vigas_tqs.mapear_apoios_vigas(pasta_pavimento)
 
-    for linha in linhas:
-        if 'Viga=' in linha:
-            viga_atual = extrair_ref_viga(linha)
-            procurar_reacoes = False
+        # Processar modelo TQS para obter coordenadas de vigas
+        from pathlib import Path
+        from TQS import TQSModel, TQSBuild
 
-        elif 'REAC. APOIO' in linha and viga_atual:
-            procurar_reacoes = True
+        pasta_pav = Path(pasta_pavimento)
+        pasta_edificio = pasta_pav.parent
+        nome_edificio = pasta_edificio.name
 
-        elif procurar_reacoes and viga_atual:
-            # Buscar linhas de dados de reações
-            # Formato: No.   Maximos   Minimos   Largura    DEPEV  Morte    Nome
-            #          1    10.024     7.647      0.70     0.14      2   V808
+        # Abrir edificio
+        build = TQSBuild.Building()
+        rc = build.RootFolder(nome_edificio)
 
-            partes = linha.split()
-            if len(partes) >= 7:
-                try:
-                    # Verificar se primeira parte é número (No.)
-                    int(partes[0])
+        if rc != 0:
+            arquivo_bde = pasta_edificio / "EDIFICIO.BDE"
+            if arquivo_bde.exists():
+                build.file.Open(str(arquivo_bde))
+                build.RootFolder(nome_edificio)
 
-                    # Índice 5 é Morte
-                    morte = int(partes[5])
+        # Abrir modelo
+        model = TQSModel.Model()
+        model.file.OpenModel()
 
-                    # Se Morte=2, é apoio em viga
-                    if morte == 2:
-                        # Índice 6 é Nome da viga de apoio
-                        nome_apoio = partes[6]
+        # Resolver pavimento
+        floor = nodes_vigas_tqs.resolver_pavimento_por_nome_de_pasta(model, pasta_pavimento)
 
-                        # Se nome começa com V e tem número, é uma viga
-                        if nome_apoio.startswith('V') and any(c.isdigit() for c in nome_apoio):
-                            if nome_apoio not in reacoes:
-                                reacoes[nome_apoio] = []
-                            reacoes[nome_apoio].append(viga_atual)
+        if floor is None:
+            return {}
 
-                except (ValueError, IndexError):
-                    pass
+        # Extrair coordenadas de todas as vigas
+        coords_vigas = {}
+        num_vigas = floor.iterator.GetNumObjects(TQSModel.TYPE_VIGAS)
 
-            # Fim da seção de reações
-            if linha.strip() == '' or '===' in linha:
-                procurar_reacoes = False
+        for iobj in range(num_vigas):
+            beam = floor.iterator.GetObject(TQSModel.TYPE_VIGAS, iobj)
+            if beam is None:
+                continue
 
-    return reacoes
+            # Extrair referencia da viga
+            ident = beam.beamIdent
+            if ident.objectTitle and ident.objectTitle.strip():
+                ident_str = ident.objectTitle.strip()
+            else:
+                ident_str = f"V{ident.objectNumber}"
+
+            # Extrair coordenadas dos nos
+            coords, _ = nodes_vigas_tqs.segmentos_da_viga(beam)
+            coords_vigas[ident_str] = coords
+
+        return coords_vigas
+
+    except Exception as e:
+        print(f"AVISO: Erro ao extrair coordenadas de vigas: {e}")
+        return {}
+
+
+
+
+def calcular_xi_acumulado_apoios(apoios, coords_hospedeira):
+    """
+    Calcula Xi acumulado (distancia desde inicio da viga) para cada apoio
+
+    Args:
+        apoios: Lista de apoios [{'viga_apoiada', 'x', 'y'}, ...]
+        coords_hospedeira: Lista de coordenadas dos nos [(x1,y1), (x2,y2), ...]
+
+    Returns:
+        Lista de apoios com campo 'xi_acumulado' adicionado
+    """
+    # Calcular Xi acumulado de cada no da viga
+    xi_nos = [0.0]  # Primeiro no tem Xi=0
+
+    for i in range(1, len(coords_hospedeira)):
+        x1, y1 = coords_hospedeira[i-1]
+        x2, y2 = coords_hospedeira[i]
+        dist = ((x2 - x1)**2 + (y2 - y1)**2)**0.5
+        xi_nos.append(xi_nos[-1] + dist)
+
+    # Para cada apoio, calcular seu Xi acumulado
+    apoios_com_xi = []
+
+    for apoio in apoios:
+        xa, ya = apoio['x'], apoio['y']
+
+        # Encontrar em qual segmento o apoio esta
+        melhor_xi = None
+        menor_dist_ao_segmento = float('inf')
+
+        for i in range(len(coords_hospedeira) - 1):
+            x1, y1 = coords_hospedeira[i]
+            x2, y2 = coords_hospedeira[i+1]
+
+            # Projetar apoio no segmento
+            # Vetor do segmento
+            dx_seg = x2 - x1
+            dy_seg = y2 - y1
+            len_seg = (dx_seg**2 + dy_seg**2)**0.5
+
+            if len_seg < 0.01:  # Segmento degenerado
+                continue
+
+            # Vetor do inicio do segmento ao apoio
+            dx_apoio = xa - x1
+            dy_apoio = ya - y1
+
+            # Projecao escalar (quanto do apoio esta ao longo do segmento)
+            proj_escalar = (dx_apoio * dx_seg + dy_apoio * dy_seg) / (len_seg**2)
+
+            # Limitar projecao ao segmento [0, 1]
+            proj_escalar = max(0.0, min(1.0, proj_escalar))
+
+            # Ponto projetado
+            xproj = x1 + proj_escalar * dx_seg
+            yproj = y1 + proj_escalar * dy_seg
+
+            # Distancia do apoio a projecao
+            dist_perp = ((xa - xproj)**2 + (ya - yproj)**2)**0.5
+
+            # Se apoio esta proximo deste segmento
+            if dist_perp < menor_dist_ao_segmento:
+                menor_dist_ao_segmento = dist_perp
+                # Xi do apoio = Xi do inicio do segmento + distancia ao longo do segmento
+                xi_apoio = xi_nos[i] + proj_escalar * len_seg
+                melhor_xi = xi_apoio
+
+        apoio_copia = apoio.copy()
+        apoio_copia['xi_acumulado'] = melhor_xi if melhor_xi is not None else 0.0
+        apoios_com_xi.append(apoio_copia)
+
+    return apoios_com_xi
 
 
 def carregar_mapeamento_apoios(pasta_pavimento):
@@ -256,14 +343,16 @@ def carregar_mapeamento_apoios(pasta_pavimento):
         return {}
 
 
-def determinar_viga_apoiada_espacial(viga_hospedeira, mapeamento_apoios, geometrias):
+def determinar_viga_apoiada_espacial(viga_hospedeira, xi_trecho, mapeamento_apoios, geometrias, coords_hospedeiras):
     """
-    Determina qual viga apoiada corresponde usando coordenadas espaciais
+    Determina qual viga apoiada corresponde usando Xi do trecho
 
     Args:
         viga_hospedeira: Referência da viga hospedeira (ex: V649)
+        xi_trecho: Posição Xi do início do trecho do RELGER (cm)
         mapeamento_apoios: Dicionário com apoios por viga hospedeira
         geometrias: Dicionário com larguras das vigas
+        coords_hospedeiras: Dict {viga: [(x1,y1), (x2,y2), ...]}
 
     Returns:
         tuple: (viga_apoiada, largura_cm, x_apoio, y_apoio) ou (None, None, None, None)
@@ -276,21 +365,37 @@ def determinar_viga_apoiada_espacial(viga_hospedeira, mapeamento_apoios, geometr
     if not apoios:
         return None, None, None, None
 
-    # Se houver múltiplos apoios, pegar o primeiro (por enquanto)
-    # TODO: Usar posição Xi do trecho para determinar qual apoio específico
-    apoio = apoios[0]
+    # Obter coordenadas da viga hospedeira
+    coords = coords_hospedeiras.get(viga_hospedeira, [])
+    if not coords:
+        # SEM FALLBACK: se coordenadas não disponíveis, retornar None
+        return None, None, None, None
 
-    viga_apoiada = apoio['viga_apoiada']
-    x_apoio = apoio['x']
-    y_apoio = apoio['y']
+    # Calcular Xi acumulado de cada apoio
+    apoios_com_xi = calcular_xi_acumulado_apoios(apoios, coords)
 
-    # Buscar largura da viga apoiada
-    largura_cm = geometrias.get(viga_apoiada, None)
+    # Encontrar apoio mais próximo de Xi do trecho
+    melhor_apoio = None
+    menor_diferenca = float('inf')
+
+    for apoio in apoios_com_xi:
+        diferenca = abs(apoio['xi_acumulado'] - xi_trecho)
+        if diferenca < menor_diferenca:
+            menor_diferenca = diferenca
+            melhor_apoio = apoio
+
+    if melhor_apoio is None:
+        return None, None, None, None
+
+    viga_apoiada = melhor_apoio['viga_apoiada']
+    x_apoio = melhor_apoio['x']
+    y_apoio = melhor_apoio['y']
+    largura_cm = geometrias.get(viga_apoiada)
 
     return viga_apoiada, largura_cm, x_apoio, y_apoio
 
 
-def processar_relger(caminho_arquivo, mapeamento_apoios=None):
+def processar_relger(caminho_arquivo, mapeamento_apoios=None, coords_hospedeiras=None):
     """
     Processa o arquivo RELGER.lst e extrai dados de armadura de suspensão
     Retorna lista de dicionários com os dados extraídos
@@ -298,9 +403,12 @@ def processar_relger(caminho_arquivo, mapeamento_apoios=None):
     Args:
         caminho_arquivo: Caminho para RELGER.lst
         mapeamento_apoios: Mapeamento de apoios da API TQS (opcional)
+        coords_hospedeiras: Coordenadas dos nós das vigas (opcional)
     """
     if mapeamento_apoios is None:
         mapeamento_apoios = {}
+    if coords_hospedeiras is None:
+        coords_hospedeiras = {}
     vigas_extraidas = []
 
     try:
@@ -310,9 +418,8 @@ def processar_relger(caminho_arquivo, mapeamento_apoios=None):
         print(f"\nErro ao ler arquivo: {e}")
         return None
 
-    # Extrair geometrias e reações de apoio PRIMEIRO
+    # Extrair geometrias PRIMEIRO
     geometrias = extrair_geometrias_vigas(linhas)
-    reacoes_apoio = extrair_reacoes_apoio(linhas)
 
     viga_atual = None
     secao_atual = None
@@ -342,19 +449,11 @@ def processar_relger(caminho_arquivo, mapeamento_apoios=None):
                     x_apoio = None
                     y_apoio = None
 
-                    # PRIORIDADE 1: Usar determinação espacial da API TQS
+                    # Usar determinação espacial com Xi
                     if mapeamento_apoios and viga_atual in mapeamento_apoios:
                         viga_apoiada_nome, a_cm, x_apoio, y_apoio = determinar_viga_apoiada_espacial(
-                            viga_atual, mapeamento_apoios, geometrias
+                            viga_atual, dados['xi'], mapeamento_apoios, geometrias, coords_hospedeiras
                         )
-
-                    # FALLBACK: Usar reações de apoio do RELGER.lst
-                    if not viga_apoiada_nome and viga_atual in reacoes_apoio:
-                        vigas_apoiadas = reacoes_apoio[viga_atual]
-                        if vigas_apoiadas:
-                            viga_apoiada_nome = vigas_apoiadas[0]
-                            if viga_apoiada_nome in geometrias:
-                                a_cm = geometrias[viga_apoiada_nome]
 
                     # Buscar seção completa da viga apoiada
                     if viga_apoiada_nome:
@@ -484,9 +583,13 @@ def processar_relger_completo():
     # ETAPA 1: Processar apoios via API TQS
     mapeamento_apoios = carregar_mapeamento_apoios(pasta_pavimento)
 
+    # ETAPA 1.5: Extrair coordenadas das vigas
+    print("\nExtraindo coordenadas das vigas...")
+    coords_hospedeiras = extrair_coordenadas_vigas(pasta_pavimento)
+
     # ETAPA 2: Processar RELGER.lst com mapeamento espacial
     print("\nProcessando RELGER.lst...")
-    dados = processar_relger(caminho_relger, mapeamento_apoios)
+    dados = processar_relger(caminho_relger, mapeamento_apoios, coords_hospedeiras)
     if dados is None:
         return False
 
