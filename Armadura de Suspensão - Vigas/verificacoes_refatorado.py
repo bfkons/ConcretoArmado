@@ -26,6 +26,29 @@ from suspensao_distribuida import verificar_suspensao_distribuida, imprimir_rela
 from utils_estribo import parsear_config_estribo, validar_config_estribo, formatar_config_estribo
 
 
+class VigaPuladaException(Exception):
+    """Exceção levantada quando usuário digita 'P' para pular viga"""
+    pass
+
+
+def verificar_input_pular(valor: str) -> str:
+    """
+    Verifica se usuário digitou 'P' para pular viga
+
+    Args:
+        valor: String digitada pelo usuário
+
+    Returns:
+        String original se não for 'P'
+
+    Raises:
+        VigaPuladaException: Se valor for 'P' (case-insensitive)
+    """
+    if valor.strip().upper() == 'P':
+        raise VigaPuladaException()
+    return valor
+
+
 def carregar_json_vigas(caminho_json: Optional[str] = None) -> Optional[Dict]:
     """Carrega dados do JSON de vigas"""
     if caminho_json is None:
@@ -85,6 +108,7 @@ def solicitar_verificacao_tirante(viga: Dict, secao: Tuple[float, float]) -> Opt
     try:
         # Solicitar escolha
         diametro_str = input("\nDigite o diametro desejado (Ø5/Ø6.3/Ø8/Ø10/Ø12.5): ").strip()
+        diametro_str = verificar_input_pular(diametro_str)
         diametro_mm = utils_tirante.validar_diametro_escolhido(diametro_str)
 
         # Obter solução
@@ -141,6 +165,7 @@ def solicitar_verificacao_suspensao(viga: Dict, secao: Tuple[float, float], fato
         print("  Formato: XX/YY (ex: 8/10 = Ø8mm a cada 10cm)")
         print("  Formato: NRXX/YY (ex: 4R8/10 = 4 ramos, Ø8mm a cada 10cm)")
         config_estribo = input("Digite a configuracao: ").strip()
+        config_estribo = verificar_input_pular(config_estribo)
 
         phi_mm, espacamento_cm, ramos = parsear_config_estribo(config_estribo)
         validar_config_estribo(phi_mm, espacamento_cm, ramos)
@@ -206,6 +231,7 @@ def solicitar_verificacao_viga_apoiada(viga_apoio: Dict) -> Optional[Dict]:
         print("  Formato: XX/YY (ex: 8/10 = Ø8mm a cada 10cm)")
         print("  Formato: NRXX/YY (ex: 4R8/10 = 4 ramos, Ø8mm a cada 10cm)")
         config_estribo = input("Digite a configuracao do estribo existente: ").strip()
+        config_estribo = verificar_input_pular(config_estribo)
 
         phi_mm, espacamento_cm, ramos = parsear_config_estribo(config_estribo)
         validar_config_estribo(phi_mm, espacamento_cm, ramos)
@@ -235,6 +261,64 @@ def solicitar_verificacao_viga_apoiada(viga_apoio: Dict) -> Optional[Dict]:
     except (ValueError, KeyboardInterrupt) as e:
         print(f"\nErro: {e}")
         return None
+
+
+def menu_revisao(vigas: List[Dict], relatorios_completos: List[Tuple[str, str]]) -> List[int]:
+    """
+    Exibe menu para reverificar vigas específicas
+
+    Args:
+        vigas: Lista completa de vigas
+        relatorios_completos: Lista de tuplas (viga_ref, relatorio_texto)
+
+    Returns:
+        Lista de índices de vigas a reverificar (vazio se nenhuma)
+    """
+    if not relatorios_completos:
+        return []
+
+    print("\nVigas processadas:")
+    viga_refs_processadas = [rel[0] for rel in relatorios_completos]
+
+    # Criar mapeamento de índice de exibição para índice original
+    indice_para_viga = {}
+    for i, viga_ref in enumerate(viga_refs_processadas, 1):
+        # Encontrar índice original da viga
+        for idx_original, viga in enumerate(vigas):
+            if viga['ref'] == viga_ref:
+                indice_para_viga[i] = idx_original
+
+                # Verificar se há verificações não atendidas
+                relatorio_texto = relatorios_completos[i-1][1]
+                aviso = ""
+                if "NAO ATENDE" in relatorio_texto:
+                    aviso = "  --> Ha verificacoes NAO ATENDIDAS"
+
+                print(f"  {i}. {viga['ref']} ({viga['secao']}){aviso}")
+                break
+
+    escolha = input("\nDeseja reverificar alguma viga? (ex: 18 ou 2,5,18) [Enter=continuar]: ").strip()
+
+    if not escolha:
+        return []
+
+    try:
+        # Parse da escolha: pode ser "18" ou "2,5,18"
+        indices_escolhidos = []
+        partes = escolha.split(',')
+
+        for parte in partes:
+            idx_exibicao = int(parte.strip())
+            if idx_exibicao < 1 or idx_exibicao > len(indice_para_viga):
+                print(f"Aviso: Indice {idx_exibicao} invalido, ignorado.")
+                continue
+            indices_escolhidos.append(indice_para_viga[idx_exibicao])
+
+        return indices_escolhidos
+
+    except ValueError:
+        print("Entrada invalida. Continuando sem reverificar.")
+        return []
 
 
 def gerar_relatorio_completo(viga: Dict, resultado_tirante: Dict, resultado_suspensao_apoio: Dict, resultado_suspensao_apoiada: Optional[Dict] = None) -> str:
@@ -337,9 +421,11 @@ def executar_verificacoes_completas():
         return None
 
     print(f"\n=== VERIFICACOES DE ARMADURA DE SUSPENSAO ===")
-    print(f"Total de vigas: {len(vigas)}\n")
+    print(f"Total de vigas: {len(vigas)}")
+    print(f"\nDICA: Digite 'P' a qualquer momento para pular a viga atual\n")
 
     relatorios_completos = []  # Lista de tuplas (viga_ref, relatorio_texto)
+    vigas_puladas = []  # Lista de índices de vigas puladas
 
     for i, viga in enumerate(vigas, 1):
         print(f"\n{'=' * 80}")
@@ -379,15 +465,147 @@ def executar_verificacoes_completas():
             print("=" * 80)
             print(relatorio)
 
+        except VigaPuladaException:
+            print(f"\n>>> Viga {viga['ref']} PULADA <<<")
+            vigas_puladas.append(i - 1)  # Guardar índice (i-1 pois enumerate começa em 1)
+            continue
+
         except Exception as e:
             print(f"\nErro ao processar viga {viga['ref']}: {e}")
             continue
+
+    # Processar vigas puladas
+    while vigas_puladas:
+        print(f"\n{'=' * 80}")
+        print(f"=== PROCESSANDO VIGAS PULADAS ({len(vigas_puladas)} restante(s)) ===")
+        print(f"{'=' * 80}")
+
+        indices_processados = []  # Vigas que foram processadas com sucesso nesta rodada
+
+        for idx_viga in vigas_puladas:
+            viga = vigas[idx_viga]
+            print(f"\n{'=' * 80}")
+            print(f"VIGA: {viga['ref']}")
+            print(f"{'=' * 80}")
+
+            try:
+                # Parsear seção
+                secao = parsear_secao(viga['secao'])
+
+                # Verificação 1: Tirante Concentrado
+                resultado_tirante = solicitar_verificacao_tirante(viga, secao)
+                if not resultado_tirante:
+                    print("\nVerificacao de tirante cancelada.")
+                    continue
+
+                # Verificação 2A: Suspensão Distribuída - Viga de APOIO (75%)
+                resultado_suspensao_apoio = solicitar_verificacao_suspensao(viga, secao, fator=0.75, titulo="VIGA DE APOIO")
+                if not resultado_suspensao_apoio:
+                    print("\nVerificacao de suspensao (viga apoio) cancelada.")
+                    continue
+
+                # Verificação 2B: Suspensão Distribuída - Viga APOIADA (25%)
+                resultado_suspensao_apoiada = None
+                if viga.get('viga_apoiada') and viga.get('secao_viga_apoiada'):
+                    resultado_suspensao_apoiada = solicitar_verificacao_viga_apoiada(viga)
+                    if not resultado_suspensao_apoiada:
+                        print("\nVerificacao de suspensao (viga apoiada) cancelada.")
+
+                # Gerar relatório
+                relatorio = gerar_relatorio_completo(viga, resultado_tirante, resultado_suspensao_apoio, resultado_suspensao_apoiada)
+                relatorios_completos.append((viga['ref'], relatorio))
+
+                # Exibir resumo
+                print("\n" + "=" * 80)
+                print("RESUMO DA VERIFICACAO")
+                print("=" * 80)
+                print(relatorio)
+
+                # Marcar como processada
+                indices_processados.append(idx_viga)
+
+            except VigaPuladaException:
+                print(f"\n>>> Viga {viga['ref']} PULADA NOVAMENTE <<<")
+                continue
+
+            except Exception as e:
+                print(f"\nErro ao processar viga {viga['ref']}: {e}")
+                continue
+
+        # Remover vigas processadas da lista de puladas
+        vigas_puladas = [idx for idx in vigas_puladas if idx not in indices_processados]
+
+        # Se nenhuma viga foi processada nesta rodada, perguntar se quer continuar
+        if not indices_processados and vigas_puladas:
+            continuar = input(f"\nAinda restam {len(vigas_puladas)} viga(s) pulada(s). Tentar novamente? (S/n): ").strip().lower()
+            if continuar == 'n':
+                print(f"\nAviso: {len(vigas_puladas)} viga(s) nao verificada(s).")
+                break
 
     # Salvar relatórios (opcional)
     if relatorios_completos:
         print(f"\n{'=' * 80}")
         print(f"VERIFICACOES CONCLUIDAS: {len(relatorios_completos)}/{len(vigas)} vigas")
         print(f"{'=' * 80}")
+
+        # Menu de revisão
+        indices_reverificar = menu_revisao(vigas, relatorios_completos)
+
+        while indices_reverificar:
+            for idx_viga in indices_reverificar:
+                viga = vigas[idx_viga]
+                print(f"\n{'=' * 80}")
+                print(f"REVERIFICANDO VIGA: {viga['ref']}")
+                print(f"{'=' * 80}")
+
+                try:
+                    # Parsear seção
+                    secao = parsear_secao(viga['secao'])
+
+                    # Verificação 1: Tirante Concentrado
+                    resultado_tirante = solicitar_verificacao_tirante(viga, secao)
+                    if not resultado_tirante:
+                        print("\nVerificacao de tirante cancelada.")
+                        continue
+
+                    # Verificação 2A: Suspensão Distribuída - Viga de APOIO (75%)
+                    resultado_suspensao_apoio = solicitar_verificacao_suspensao(viga, secao, fator=0.75, titulo="VIGA DE APOIO")
+                    if not resultado_suspensao_apoio:
+                        print("\nVerificacao de suspensao (viga apoio) cancelada.")
+                        continue
+
+                    # Verificação 2B: Suspensão Distribuída - Viga APOIADA (25%)
+                    resultado_suspensao_apoiada = None
+                    if viga.get('viga_apoiada') and viga.get('secao_viga_apoiada'):
+                        resultado_suspensao_apoiada = solicitar_verificacao_viga_apoiada(viga)
+                        if not resultado_suspensao_apoiada:
+                            print("\nVerificacao de suspensao (viga apoiada) cancelada.")
+
+                    # Gerar relatório atualizado
+                    relatorio = gerar_relatorio_completo(viga, resultado_tirante, resultado_suspensao_apoio, resultado_suspensao_apoiada)
+
+                    # Atualizar no relatorios_completos
+                    for i, (ref, _) in enumerate(relatorios_completos):
+                        if ref == viga['ref']:
+                            relatorios_completos[i] = (viga['ref'], relatorio)
+                            break
+
+                    # Exibir resumo
+                    print("\n" + "=" * 80)
+                    print("RESUMO DA VERIFICACAO (ATUALIZADO)")
+                    print("=" * 80)
+                    print(relatorio)
+
+                except VigaPuladaException:
+                    print(f"\n>>> Viga {viga['ref']} pulada durante reverificacao <<<")
+                    continue
+
+                except Exception as e:
+                    print(f"\nErro ao reverificar viga {viga['ref']}: {e}")
+                    continue
+
+            # Perguntar se quer reverificar mais alguma
+            indices_reverificar = menu_revisao(vigas, relatorios_completos)
 
         salvar = input("\nDeseja salvar o relatorio individual agora? (S/n): ").strip().lower()
         if salvar != 'n':
