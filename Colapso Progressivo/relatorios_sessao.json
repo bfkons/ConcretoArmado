@@ -1,0 +1,20 @@
+{
+  "data_inicio_sessao": "2025-11-02 23:43:02",
+  "relatorios": [
+    {
+      "pilar": "P24",
+      "timestamp": "2025-11-02 23:43:02",
+      "relatorio_completo": "============================================================\nPILAR P24\n============================================================\nArquivo: PUNC024.txt\nDimensões: 30.0 x 80.0 cm\nFd: 64.835 tf\nfck: 35 MPa\nLocalização: Canto\n\nARMADURA DEFINIDA:\n  Direção X: 7Ø16 × 1 face(s) = 14.074 cm²\n  Direção Y: 3Ø16 × 1 face(s) = 6.032 cm²\n\nVERIFICAÇÃO:\n  As,necessária (Sd): 18.802 cm²\n  As,fornecida (Rd):  20.106 cm²\n  Sd/Rd: 0.935 (93.5%)\n  Status: ATENDE\n============================================================\n"
+    },
+    {
+      "pilar": "P24",
+      "timestamp": "2025-11-02 23:46:35",
+      "relatorio_completo": "============================================================\nPILAR P24\n============================================================\nArquivo: PUNC024.txt\nDimensões: 30.0 x 80.0 cm\nFd: 64.835 tf\nfck: 35 MPa\nLocalização: Borda X\n\nARMADURA DEFINIDA:\n  Direção X: 2Ø12.5 × 2 face(s) = 4.909 cm²\n  Direção Y: 7Ø16 × 1 face(s) = 14.074 cm²\n\nVERIFICAÇÃO:\n  As,necessária (Sd): 18.802 cm²\n  As,fornecida (Rd):  18.983 cm²\n  Sd/Rd: 0.990 (99.0%)\n  Status: ATENDE\n============================================================\n"
+    },
+    {
+      "pilar": "P24",
+      "timestamp": "2025-11-02 23:49:04",
+      "relatorio_completo": "============================================================\nPILAR P24\n============================================================\nArquivo: PUNC024.txt\nDimensões: 30.0 x 80.0 cm\nFd: 64.835 tf\nfck: 35 MPa\nLocalização: Borda Y\n\nARMADURA DEFINIDA:\n  Direção X: 2Ø16 × 1 face(s) = 4.021 cm²\n  Direção Y: 7Ø12.5 × 2 face(s) = 17.181 cm²\n\nVERIFICAÇÃO:\n  As,necessária (Sd): 18.802 cm²\n  As,fornecida (Rd):  21.202 cm²\n  Sd/Rd: 0.887 (88.7%)\n  Status: ATENDE\n============================================================\n"
+    }
+  ]
+}

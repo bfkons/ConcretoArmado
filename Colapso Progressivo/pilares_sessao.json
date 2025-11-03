@@ -1,0 +1,13 @@
+[
+  {
+    "arquivo": "PUNC024.txt",
+    "id_pilar": "P24",
+    "pilar_b": 30.0,
+    "pilar_h": 80.0,
+    "laje_h": 33.5,
+    "d": 31.2,
+    "fd": 64.8354,
+    "fck": 35.0,
+    "tipo_pilar": "Interno"
+  }
+]
