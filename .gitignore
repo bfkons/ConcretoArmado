@@ -157,3 +157,9 @@ Thumbs.db
 Armadura de Suspensão - Vigas/vigas_suspensao.json
 Armadura de Suspensão - Vigas/relatorios_sessao.json
 Armadura de Suspensão - Vigas/apoios_vigas_tqs.json
+
+# Configuration files (local overrides)
+Colapso Progressivo/config.json
+
+# Test files
+**/test_*.py

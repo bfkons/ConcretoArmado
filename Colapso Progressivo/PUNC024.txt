@@ -1,0 +1,62 @@
+--------------------------------------------------------------------------------------
+
+Relatório LPunc - Punção em Lajes - 01/11/2025 12:06:29
+
+--------------------------------------------------------------------------------------
+
+Dados Iniciais
+
+Pilar b (cm): 30
+Pilar h (cm): 80
+Laje h (cm): 33.5
+Altura Útil d (cm): 31.2
+Fd (tf): 64.8354
+Mxd (tf.m): 21.2044
+Myd (tf.m): 3.0086
+Fck (MPa): 35
+Arm. Pos. Hor. Ø6.3 C/20
+Arm. Pos. Ver. Ø6.3 C/20
+Punção Ø8
+
+Taxas Geométricas de Armadura Passiva
+
+ρ x (%): 0.2622
+ρ y (%): 0.4296
+ρ (%): 0.3356
+
+Tensões Resistentes
+
+TRd1 (MPa): 0.53
+
+TRd2 (MPa): 5.81
+
+--------------------------------------------------------------------------------------
+Pilar Interno
+--------------------------------------------------------------------------------------
+
+Superfície C
+
+u (cm): 220
+d (cm): 31.2
+
+TSd (MPa): 0.94
+TRd2 (MPa): 5.81
+Ok!
+
+Superfície C'
+
+u (cm): 612.07
+d (cm): 31.2
+K1: 0.45
+Wp1 (cm²): 34290.1
+K2: 0.77
+Wp2 (cm²): 40601.87
+
+TSd (MPa): 0.48
+TRd1 (MPa): 0.53
+Ok!
+
+Adotadas 4 superfícies.
+
+Adotada armadura mínima de 16 Ø8
+
