@@ -47,3 +47,25 @@ def formatar_armadura(n_barras: int, phi_mm: float) -> str:
         String formatada (ex: "4Ø12.5")
     """
     return f"{n_barras}{formatar_diametro(phi_mm)}"
+
+
+def normalizar_entrada_decimal(valor_str: str) -> str:
+    """
+    Normaliza entrada decimal substituindo vírgula por ponto.
+
+    Permite que usuário digite valores decimais com vírgula (padrão brasileiro)
+    ou ponto (padrão internacional).
+
+    Args:
+        valor_str: String com o valor digitado pelo usuário
+
+    Returns:
+        String normalizada com ponto decimal
+
+    Examples:
+        >>> normalizar_entrada_decimal("12,5")
+        "12.5"
+        >>> normalizar_entrada_decimal("12.5")
+        "12.5"
+    """
+    return valor_str.strip().replace(',', '.')

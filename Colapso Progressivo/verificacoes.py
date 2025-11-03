@@ -9,6 +9,7 @@ from datetime import datetime
 
 import calculo
 from utils import parser_punc, formatacao
+from utils.formatacao import normalizar_entrada_decimal
 
 
 def executar_verificacoes_completas() -> List[Tuple[str, str]]:
@@ -117,7 +118,7 @@ def verificar_pilar_interativo(dados_pilar: Dict, config: Dict) -> Optional[str]
 
         # Solicitar percentual
         try:
-            percentual = float(input(f"\n Percentual de As,ccp para direção {direcao_inicial} (0-100): ").strip())
+            percentual = float(normalizar_entrada_decimal(input(f"\n Percentual de As,ccp para direção {direcao_inicial} (0-100): ")))
             if percentual < 0 or percentual > 100:
                 print("Percentual deve estar entre 0 e 100.")
                 continue
@@ -149,7 +150,7 @@ def verificar_pilar_interativo(dados_pilar: Dict, config: Dict) -> Optional[str]
 
         # Input direção 1
         try:
-            phi_dir1 = float(input(f"\n Diâmetro escolhido para direção {direcao_inicial} (mm): ").strip())
+            phi_dir1 = float(normalizar_entrada_decimal(input(f"\n Diâmetro escolhido para direção {direcao_inicial} (mm): ")))
             if phi_dir1 not in config['diametros_disponiveis_mm']:
                 print(f"Diâmetro {formatacao.formatar_diametro(phi_dir1)} não disponível.")
                 continue
@@ -191,7 +192,7 @@ def verificar_pilar_interativo(dados_pilar: Dict, config: Dict) -> Optional[str]
 
         # Input direção 2 (apenas diâmetro)
         try:
-            phi_dir2 = float(input(f"\n Diâmetro escolhido para direção {direcao_complementar} (mm): ").strip())
+            phi_dir2 = float(normalizar_entrada_decimal(input(f"\n Diâmetro escolhido para direção {direcao_complementar} (mm): ")))
             if phi_dir2 not in config['diametros_disponiveis_mm']:
                 print(f"Diâmetro {formatacao.formatar_diametro(phi_dir2)} não disponível.")
                 continue
