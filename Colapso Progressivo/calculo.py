@@ -218,3 +218,92 @@ def calcular_fyd(fyk_mpa: float, gamma_s: float = 1.15) -> float:
         fyd em MPa
     """
     return fyk_mpa / gamma_s
+
+
+def calcular_lb(phi_mm: float, fyk_mpa: float, fck_mpa: float) -> float:
+    """
+    Calcula comprimento de ancoragem básico.
+
+    Fórmula: lb = (Ø × fyk) / (1.5525 × fck^(2/3))
+
+    Args:
+        phi_mm: Diâmetro da barra em milímetros
+        fyk_mpa: Resistência característica do aço em MPa
+        fck_mpa: Resistência característica do concreto em MPa
+
+    Returns:
+        Comprimento de ancoragem básico em centímetros
+    """
+    phi_cm = phi_mm / 10.0
+    lb_cm = (phi_cm * fyk_mpa) / (1.5525 * (fck_mpa ** (2.0/3.0)))
+    return lb_cm
+
+
+def calcular_comprimento_barra(
+    direcao: str,
+    localizacao: str,
+    lb: float,
+    d: float,
+    lado: float
+) -> float:
+    """
+    Calcula comprimento total de uma barra de colapso progressivo.
+
+    Fórmulas por localização e direção:
+    - Centro: 2×lb + 4×d + lado (ambas direções)
+    - Canto: lb + 2×d + lado (ambas direções)
+    - Borda X:
+        • dir X: 2×lb + 4×d + lado
+        • dir Y: lb + 2×d + lado
+    - Borda Y:
+        • dir X: lb + 2×d + lado
+        • dir Y: 2×lb + 4×d + lado
+
+    Args:
+        direcao: 'X' ou 'Y'
+        localizacao: 'Centro', 'Canto', 'Borda X' ou 'Borda Y'
+        lb: Comprimento de ancoragem básico em cm
+        d: Altura útil em cm
+        lado: Dimensão do pilar na direção (pilar_b para X, pilar_h para Y) em cm
+
+    Returns:
+        Comprimento da barra em centímetros (sem arredondamento)
+    """
+    loc = localizacao.lower()
+    dir_upper = direcao.upper()
+
+    if "centro" in loc:
+        # Centro: sempre 2×lb + 4×d + lado
+        return 2 * lb + 4 * d + lado
+
+    elif "canto" in loc:
+        # Canto: sempre lb + 2×d + lado
+        return lb + 2 * d + lado
+
+    elif "borda x" in loc:
+        if dir_upper == 'X':
+            return 2 * lb + 4 * d + lado
+        else:  # Y
+            return lb + 2 * d + lado
+
+    elif "borda y" in loc:
+        if dir_upper == 'X':
+            return lb + 2 * d + lado
+        else:  # Y
+            return 2 * lb + 4 * d + lado
+
+    else:
+        raise ValueError(f"Localização inválida: {localizacao}")
+
+
+def arredondar_multiplo_5(valor_cm: float) -> int:
+    """
+    Arredonda sempre para cima em múltiplos de 5 cm.
+
+    Args:
+        valor_cm: Comprimento em centímetros
+
+    Returns:
+        Comprimento arredondado para múltiplo de 5 cm (int)
+    """
+    return int(math.ceil(valor_cm / 5.0) * 5)

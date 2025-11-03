@@ -93,21 +93,35 @@ def extrair_dados_punc(filepath: str) -> Dict[str, any]:
     with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
         conteudo = f.read()
 
-    # Expressões regulares para extração
+    # Expressões regulares para extração (100% dinâmicas)
+    # Estratégia: contexto + unidade única para garantir captura correta
     patterns = {
-        "pilar_b": r'Pilar\s+b\s*\(cm\)\s*:\s*([\d.]+)',
-        "pilar_h": r'Pilar\s+h\s*\(cm\)\s*:\s*([\d.]+)',
-        "laje_h": r'Laje\s+h\s*\(cm\)\s*:\s*([\d.]+)',
-        "d": r'Altura\s+Útil\s+d\s*\(cm\)\s*:\s*([\d.]+)',
-        "fd": r'Fd\s*\(tf\)\s*:\s*([\d.]+)',
-        "fck": r'Fck\s*\(MPa\)\s*:\s*([\d.]+)'
+        # "pilar" (qualquer variação) + "b (cm)"
+        "pilar_b": r'(?i)pilar.*?b\s*\(\s*cm\s*\)\s*:\s*([\d.,]+)',
+
+        # "pilar" (qualquer variação) + "h (cm)"
+        "pilar_h": r'(?i)pilar.*?h\s*\(\s*cm\s*\)\s*:\s*([\d.,]+)',
+
+        # "laje" (qualquer variação) + "h (cm)"
+        "laje_h": r'(?i)laje.*?h\s*\(\s*cm\s*\)\s*:\s*([\d.,]+)',
+
+        # "altura" ou "útil/util" + "d (cm)"
+        "d": r'(?i)(?:altura|útil|util).*?d\s*\(\s*cm\s*\)\s*:\s*([\d.,]+)',
+
+        # "Fd" ou "F d" + "(tf)"
+        "fd": r'(?i)f\s*d\s*\(\s*tf\s*\)\s*:\s*([\d.,]+)',
+
+        # "Fck" ou "F c k" + "(MPa)"
+        "fck": r'(?i)f\s*c\s*k\s*\(\s*MPa\s*\)\s*:\s*([\d.,]+)'
     }
 
     # Extrair valores numéricos
     for campo, pattern in patterns.items():
         match = re.search(pattern, conteudo, re.IGNORECASE)
         if match:
-            dados[campo] = float(match.group(1))
+            # Normalizar vírgula para ponto decimal
+            valor_str = match.group(1).replace(',', '.')
+            dados[campo] = float(valor_str)
 
     # Identificar tipo de pilar
     if re.search(r'Pilar\s+Interno', conteudo, re.IGNORECASE):

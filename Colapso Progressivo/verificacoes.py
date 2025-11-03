@@ -219,6 +219,33 @@ def verificar_pilar_interativo(dados_pilar: Dict, config: Dict) -> Optional[str]
         as_forn = calculo.calcular_as_fornecida(localizacao, n_x, phi_x, n_y, phi_y)
         verif = calculo.verificar_armadura(as_necessaria, as_forn["as_total"])
 
+        # Calcular comprimentos
+        fck = dados_pilar['fck']
+        d = dados_pilar.get('d', 0)
+
+        if d == 0 or d is None:
+            print("\n AVISO: Altura útil 'd' não encontrada no PUNC. Comprimentos não serão calculados.")
+
+        # Direção X
+        if n_x > 0 and d > 0:
+            lb_x = calculo.calcular_lb(phi_x, fyk, fck)
+            comp_barra_x = calculo.calcular_comprimento_barra('X', localizacao, lb_x, d, dados_pilar['pilar_b'])
+            comp_barra_x_arred = calculo.arredondar_multiplo_5(comp_barra_x)
+            comp_total_x = comp_barra_x_arred * n_x * mult_x
+        else:
+            comp_barra_x_arred = 0
+            comp_total_x = 0
+
+        # Direção Y
+        if n_y > 0 and d > 0:
+            lb_y = calculo.calcular_lb(phi_y, fyk, fck)
+            comp_barra_y = calculo.calcular_comprimento_barra('Y', localizacao, lb_y, d, dados_pilar['pilar_h'])
+            comp_barra_y_arred = calculo.arredondar_multiplo_5(comp_barra_y)
+            comp_total_y = comp_barra_y_arred * n_y * mult_y
+        else:
+            comp_barra_y_arred = 0
+            comp_total_y = 0
+
         # Exibir resultado
         print(f"\n {'='*60}")
         print(" VERIFICACAO")
@@ -227,12 +254,18 @@ def verificar_pilar_interativo(dados_pilar: Dict, config: Dict) -> Optional[str]
         print(f" As,fornecida (Rd)  = {as_forn['as_total']:.3f} cm²")
 
         if n_x > 0:
-            print(f"   • Em X: {n_x}{formatacao.formatar_diametro(phi_x)} × {mult_x} = {as_forn['as_x']:.3f} cm²")
+            if d > 0:
+                print(f"   • Em X: {n_x}{formatacao.formatar_diametro(phi_x)} × {mult_x} = {as_forn['as_x']:.3f} cm²    --> Comp. barra: {comp_barra_x_arred}cm | Comp. Total: {comp_total_x}cm")
+            else:
+                print(f"   • Em X: {n_x}{formatacao.formatar_diametro(phi_x)} × {mult_x} = {as_forn['as_x']:.3f} cm²")
         else:
             print(f"   • Em X: (nenhuma)")
 
         if n_y > 0:
-            print(f"   • Em Y: {n_y}{formatacao.formatar_diametro(phi_y)} × {mult_y} = {as_forn['as_y']:.3f} cm²")
+            if d > 0:
+                print(f"   • Em Y: {n_y}{formatacao.formatar_diametro(phi_y)} × {mult_y} = {as_forn['as_y']:.3f} cm²    --> Comp. barra: {comp_barra_y_arred}cm | Comp. Total: {comp_total_y}cm")
+            else:
+                print(f"   • Em Y: {n_y}{formatacao.formatar_diametro(phi_y)} × {mult_y} = {as_forn['as_y']:.3f} cm²")
         else:
             print(f"   • Em Y: (nenhuma)")
 
@@ -297,13 +330,32 @@ def gerar_relatorio_pilar(
 
     mult_x, mult_y = calculo.obter_multiplicadores_faces(localizacao)
 
+    # Calcular comprimentos para relatório
+    fyk = config['materiais']['fyk_mpa']
+    fck = dados_pilar['fck']
+    d = dados_pilar.get('d', 0)
+
     if n_x > 0:
-        linhas.append(f"  Direção X: {n_x}{formatacao.formatar_diametro(phi_x)} × {mult_x} face(s) = {as_fornecida['as_x']:.3f} cm²")
+        if d > 0:
+            lb_x = calculo.calcular_lb(phi_x, fyk, fck)
+            comp_barra_x = calculo.calcular_comprimento_barra('X', localizacao, lb_x, d, dados_pilar['pilar_b'])
+            comp_barra_x_arred = calculo.arredondar_multiplo_5(comp_barra_x)
+            comp_total_x = comp_barra_x_arred * n_x * mult_x
+            linhas.append(f"  Direção X: {n_x}{formatacao.formatar_diametro(phi_x)} × {mult_x} face(s) = {as_fornecida['as_x']:.3f} cm² --> Comp. barra: {comp_barra_x_arred}cm | Comp. Total: {comp_total_x}cm")
+        else:
+            linhas.append(f"  Direção X: {n_x}{formatacao.formatar_diametro(phi_x)} × {mult_x} face(s) = {as_fornecida['as_x']:.3f} cm²")
     else:
         linhas.append(f"  Direção X: (nenhuma)")
 
     if n_y > 0:
-        linhas.append(f"  Direção Y: {n_y}{formatacao.formatar_diametro(phi_y)} × {mult_y} face(s) = {as_fornecida['as_y']:.3f} cm²")
+        if d > 0:
+            lb_y = calculo.calcular_lb(phi_y, fyk, fck)
+            comp_barra_y = calculo.calcular_comprimento_barra('Y', localizacao, lb_y, d, dados_pilar['pilar_h'])
+            comp_barra_y_arred = calculo.arredondar_multiplo_5(comp_barra_y)
+            comp_total_y = comp_barra_y_arred * n_y * mult_y
+            linhas.append(f"  Direção Y: {n_y}{formatacao.formatar_diametro(phi_y)} × {mult_y} face(s) = {as_fornecida['as_y']:.3f} cm² --> Comp. barra: {comp_barra_y_arred}cm | Comp. Total: {comp_total_y}cm")
+        else:
+            linhas.append(f"  Direção Y: {n_y}{formatacao.formatar_diametro(phi_y)} × {mult_y} face(s) = {as_fornecida['as_y']:.3f} cm²")
     else:
         linhas.append(f"  Direção Y: (nenhuma)")
 
