@@ -253,11 +253,11 @@ def calcular_comprimento_barra(
     - Centro: 2×lb + 4×d + lado (ambas direções)
     - Canto: lb + 2×d + lado (ambas direções)
     - Borda X:
-        • dir X: 2×lb + 4×d + lado
-        • dir Y: lb + 2×d + lado
-    - Borda Y:
         • dir X: lb + 2×d + lado
         • dir Y: 2×lb + 4×d + lado
+    - Borda Y:
+        • dir X: 2×lb + 4×d + lado
+        • dir Y: lb + 2×d + lado
 
     Args:
         direcao: 'X' ou 'Y'
@@ -282,15 +282,15 @@ def calcular_comprimento_barra(
 
     elif "borda x" in loc:
         if dir_upper == 'X':
-            return 2 * lb + 4 * d + lado
-        else:  # Y
             return lb + 2 * d + lado
+        else:  # Y
+            return 2 * lb + 4 * d + lado
 
     elif "borda y" in loc:
         if dir_upper == 'X':
-            return lb + 2 * d + lado
-        else:  # Y
             return 2 * lb + 4 * d + lado
+        else:  # Y
+            return lb + 2 * d + lado
 
     else:
         raise ValueError(f"Localização inválida: {localizacao}")
