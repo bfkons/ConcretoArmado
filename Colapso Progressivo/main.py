@@ -157,6 +157,57 @@ def opcao_verificar_armaduras():
         if relatorios:
             print("\nVerificacoes concluidas com sucesso.")
 
+            # Perguntar se deseja salvar relatório do pavimento
+            resposta_pav = input("\nSalvar relatorio do pavimento atual? (S/N): ").strip().upper()
+
+            if resposta_pav == 'S':
+                # Gerar nome sugerido
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                nome_sugerido = f"relatorio_pavimento_{timestamp}.txt"
+
+                # Windows Explorer
+                root = Tk()
+                root.withdraw()
+                root.attributes('-topmost', True)
+
+                arquivo = filedialog.asksaveasfilename(
+                    title="Salvar relatório do pavimento",
+                    defaultextension=".txt",
+                    filetypes=[("Arquivos de texto", "*.txt"), ("Todos os arquivos", "*.*")],
+                    initialfile=nome_sugerido
+                )
+
+                root.destroy()
+
+                if arquivo:
+                    # Gerar conteúdo do relatório do pavimento
+                    linhas = []
+                    linhas.append("="*80)
+                    linhas.append(" "*20 + "RELATORIO DO PAVIMENTO")
+                    linhas.append(" "*20 + "COLAPSO PROGRESSIVO - NBR 6118:2023")
+                    linhas.append("="*80)
+                    linhas.append(f"Data: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+                    linhas.append(f"Total de pilares: {len(relatorios)}")
+                    linhas.append("="*80)
+                    linhas.append("")
+
+                    for i, (pilar_ref, relatorio_texto) in enumerate(relatorios, 1):
+                        linhas.append(f"VERIFICACAO {i}")
+                        linhas.append("")
+                        linhas.append(relatorio_texto)
+                        linhas.append("")
+                        linhas.append("="*80)
+                        linhas.append("")
+
+                    try:
+                        with open(arquivo, 'w', encoding='utf-8') as f:
+                            f.write("\n".join(linhas))
+                        print(f"\nRelatorio do pavimento salvo: {arquivo}")
+                    except Exception as e:
+                        print(f"\nErro ao salvar: {e}")
+                else:
+                    print("\nOperacao cancelada.")
+
             # Perguntar se deseja adicionar ao relatório global
             resposta = input("\nAdicionar ao relatorio global? (S/N): ").strip().upper()
 
@@ -242,6 +293,9 @@ def opcao_salvar_relatorio_global():
 
 def main():
     """Função principal - loop do menu"""
+    # Limpar relatório global da sessão anterior
+    relatorio_global.limpar_json_relatorios()
+
     try:
         while True:
             limpar_tela()
@@ -295,9 +349,8 @@ def main():
         print("\n\nEncerrando...")
 
     finally:
-        # Limpeza opcional do JSON temporário ao sair
-        # (comentado para manter histórico entre execuções)
-        # relatorio_global.limpar_json_relatorios()
+        # Manter histórico entre execuções
+        # JSON é limpo no início da próxima sessão
         pass
 
 

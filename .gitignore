@@ -164,3 +164,5 @@ Colapso Progressivo/config.json
 # Test files
 **/test_*.py
 Colapso Progressivo/nul
+Colapso Progressivo/relatorios_sessao.json
+Colapso Progressivo/pilares_sessao.json
