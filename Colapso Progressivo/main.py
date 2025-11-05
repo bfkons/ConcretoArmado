@@ -40,12 +40,13 @@ def exibir_menu():
     print("\n1. Processar pavimento (arquivos PUNC*.txt)")
     print("2. Visualizar dados carregados")
     print("3. Verificar armaduras (NBR 6118)")
+    print("4. Verificar pilar especifico")
 
     # Mostrar opções de relatório global se houver relatórios
     if relatorio_global.existe_json_relatorios():
         num_relatorios = relatorio_global.contar_relatorios()
-        print(f"4. Visualizar relatorio global ({num_relatorios} pilar(es))")
-        print("5. Salvar relatorio global em TXT")
+        print(f"5. Visualizar relatorio global ({num_relatorios} pilar(es))")
+        print("6. Salvar relatorio global em TXT")
 
     print("0. Sair")
     print("\n" + "="*60)
@@ -230,6 +231,130 @@ def opcao_verificar_armaduras():
     input("\nPressione ENTER para continuar...")
 
 
+def opcao_verificar_pilar_especifico():
+    """Verifica armadura de um pilar específico"""
+    limpar_tela()
+
+    while True:  # Loop para verificar múltiplos pilares
+        print("\n=== VERIFICAR PILAR ESPECIFICO ===\n")
+
+        # 1. Carregar pilares
+        pilares = verificacoes.carregar_dados_pilares()
+
+        if not pilares:
+            print("Nenhum pilar carregado.")
+            print("Execute primeiro a opcao 1 para processar arquivos PUNC*.txt")
+            input("\nPressione ENTER para continuar...")
+            return
+
+        # 2. Listar pilares disponíveis
+        print(f"Total de {len(pilares)} pilar(es) disponivel(is):\n")
+        for i, pilar in enumerate(pilares, 1):
+            print(f"{i}. {pilar['id_pilar']} - {pilar['pilar_b']:.1f}x{pilar['pilar_h']:.1f}cm - Fd={pilar['fd']:.3f}tf")
+
+        # 3. Selecionar pilar
+        try:
+            opcao = input("\nSelecione o numero do pilar (0 para voltar): ").strip()
+
+            if opcao == "0" or opcao == "":
+                break
+
+            indice = int(opcao) - 1
+
+            if indice < 0 or indice >= len(pilares):
+                print("\nNumero invalido.")
+                input("\nPressione ENTER para continuar...")
+                limpar_tela()
+                continue
+
+        except ValueError:
+            print("\nEntrada invalida.")
+            input("\nPressione ENTER para continuar...")
+            limpar_tela()
+            continue
+        except KeyboardInterrupt:
+            print("\n\nOperacao cancelada.")
+            break
+
+        # 4. Processar pilar selecionado
+        config = verificacoes.carregar_config()
+        pilar_selecionado = pilares[indice]
+
+        print(f"\nProcessando: {pilar_selecionado['id_pilar']}\n")
+
+        try:
+            relatorio = verificacoes.verificar_pilar_interativo(pilar_selecionado, config)
+
+            # 5. Opções pós-verificação
+            if relatorio:
+                # Opção: Salvar relatório individual
+                resposta_salvar = input("\nSalvar relatorio deste pilar? (S/N): ").strip().upper()
+
+                if resposta_salvar == 'S':
+                    # Gerar nome sugerido
+                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                    nome_sugerido = f"relatorio_{pilar_selecionado['id_pilar']}_{timestamp}.txt"
+
+                    # Windows Explorer
+                    root = Tk()
+                    root.withdraw()
+                    root.attributes('-topmost', True)
+
+                    arquivo = filedialog.asksaveasfilename(
+                        title=f"Salvar relatório do pilar {pilar_selecionado['id_pilar']}",
+                        defaultextension=".txt",
+                        filetypes=[("Arquivos de texto", "*.txt"), ("Todos os arquivos", "*.*")],
+                        initialfile=nome_sugerido
+                    )
+
+                    root.destroy()
+
+                    if arquivo:
+                        # Gerar cabeçalho do relatório
+                        linhas = []
+                        linhas.append("="*80)
+                        linhas.append(" "*20 + "RELATORIO INDIVIDUAL")
+                        linhas.append(" "*20 + "COLAPSO PROGRESSIVO - NBR 6118:2023")
+                        linhas.append("="*80)
+                        linhas.append(f"Data: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+                        linhas.append("="*80)
+                        linhas.append("")
+                        linhas.append(relatorio)
+
+                        try:
+                            with open(arquivo, 'w', encoding='utf-8') as f:
+                                f.write("\n".join(linhas))
+                            print(f"\nRelatorio salvo: {arquivo}")
+                        except Exception as e:
+                            print(f"\nErro ao salvar: {e}")
+                    else:
+                        print("\nOperacao cancelada.")
+
+                # Opção: Adicionar ao relatório global
+                resposta_global = input("\nAdicionar ao relatorio global? (S/N): ").strip().upper()
+
+                if resposta_global == 'S':
+                    sucesso = relatorio_global.adicionar_relatorio(
+                        pilar_selecionado['id_pilar'],
+                        relatorio
+                    )
+                    if sucesso:
+                        print(f"\nRelatorio adicionado ao relatorio global.")
+                    else:
+                        print(f"\nErro ao adicionar relatorio ao relatorio global.")
+
+        except Exception as e:
+            print(f"\nErro ao processar pilar: {e}")
+            import traceback
+            traceback.print_exc()
+
+        # Loop: verificar outro pilar
+        input("\nPressione ENTER para continuar...")
+        limpar_tela()
+
+    input("\nPressione ENTER para continuar...")
+
+
 def opcao_visualizar_relatorio_global():
     """Exibe relatório global com todas as verificações acumuladas"""
     limpar_tela()
@@ -314,13 +439,16 @@ def main():
                     opcao_verificar_armaduras()
 
                 elif opcao == "4":
+                    opcao_verificar_pilar_especifico()
+
+                elif opcao == "5":
                     if relatorio_global.existe_json_relatorios():
                         opcao_visualizar_relatorio_global()
                     else:
                         print("\nOpcao invalida. Tente novamente.")
                         input("\nPressione ENTER para continuar...")
 
-                elif opcao == "5":
+                elif opcao == "6":
                     if relatorio_global.existe_json_relatorios():
                         opcao_salvar_relatorio_global()
                     else:
