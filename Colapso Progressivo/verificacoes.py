@@ -4,6 +4,7 @@ Módulo de verificações de armadura de colapso progressivo.
 
 import os
 import json
+import math
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime
 
@@ -135,18 +136,32 @@ def verificar_pilar_interativo(dados_pilar: Dict, config: Dict) -> Optional[str]
         print(f"\n As,ccp = {as_necessaria:.3f} cm² | Direção {direcao_inicial} ({percentual:.0f}%) = {as_alvo_dir1:.3f} cm²")
         print(f" Multiplicador: {mult_inicial} face(s)\n")
 
+        # Determinar multiplicador da direção complementar (para cálculo da coluna)
+        direcao_complementar = 'Y' if direcao_inicial == 'X' else 'X'
+        mult_complementar = mult_y if direcao_complementar == 'Y' else mult_x
+
         sugestoes_dir1 = calculo.calcular_barras_por_diametro(
             as_alvo_dir1,
             mult_inicial,
             config['diametros_disponiveis_mm']
         )
 
-        print(" Diâmetro | Barras/face | As fornecida")
-        print(" ---------|-------------|-------------")
-        for phi in config['diametros_disponiveis_mm']:
+        print(" Diâmetro | Barras/face |   As fornecida  | Nbarra (oposta)")
+        print(" ---------|-------------|-----------------|----------------")
+        for i, phi in enumerate(config['diametros_disponiveis_mm']):
             n_barras = sugestoes_dir1[phi]
             as_forn = mult_inicial * n_barras * calculo.area_barra_cm2(phi)
-            print(f" {formatacao.formatar_diametro(phi):8} | {n_barras:11} | {as_forn:10.2f} cm²")
+
+            # Calcular n_barras necessárias na face oposta
+            as_restante_linha = as_necessaria - as_forn
+            area_barra = calculo.area_barra_cm2(phi)
+            n_barras_oposta = math.ceil(as_restante_linha / (mult_complementar * area_barra))
+
+            print(f" {formatacao.formatar_diametro(phi):8} | {n_barras:^11} | {as_forn:11.2f} cm² | {n_barras_oposta:^14}")
+
+            # Adicionar separador entre linhas (exceto na última)
+            if i < len(config['diametros_disponiveis_mm']) - 1:
+                print(" ---------|-------------|-----------------|----------------")
 
         # Input direção 1
         try:
@@ -183,12 +198,16 @@ def verificar_pilar_interativo(dados_pilar: Dict, config: Dict) -> Optional[str]
             config['diametros_disponiveis_mm']
         )
 
-        print(" Diâmetro | Barras/face | As fornecida")
-        print(" ---------|-------------|-------------")
-        for phi in config['diametros_disponiveis_mm']:
+        print(" Diâmetro | Barras/face |   As fornecida  ")
+        print(" ---------|-------------|------------------")
+        for i, phi in enumerate(config['diametros_disponiveis_mm']):
             n_barras = sugestoes_dir2[phi]
             as_forn = mult_complementar * n_barras * calculo.area_barra_cm2(phi)
-            print(f" {formatacao.formatar_diametro(phi):8} | {n_barras:11} | {as_forn:10.2f} cm²")
+            print(f" {formatacao.formatar_diametro(phi):8} | {n_barras:^11} | {as_forn:11.2f} cm²  ")
+
+            # Adicionar separador entre linhas (exceto na última)
+            if i < len(config['diametros_disponiveis_mm']) - 1:
+                print(" ---------|-------------|------------------")
 
         # Input direção 2 (apenas diâmetro)
         try:
