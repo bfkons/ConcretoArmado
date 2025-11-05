@@ -282,15 +282,15 @@ def calcular_comprimento_barra(
 
     elif "borda x" in loc:
         if dir_upper == 'X':
-            return lb + 2 * d + lado
-        else:  # Y
             return 2 * lb + 4 * d + lado
+        else:  # Y
+            return lb + 2 * d + lado
 
     elif "borda y" in loc:
         if dir_upper == 'X':
-            return 2 * lb + 4 * d + lado
-        else:  # Y
             return lb + 2 * d + lado
+        else:  # Y
+            return 2 * lb + 4 * d + lado
 
     else:
         raise ValueError(f"Localização inválida: {localizacao}")

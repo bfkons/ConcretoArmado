@@ -217,15 +217,15 @@ def verificar_pilar_interativo(dados_pilar: Dict, config: Dict) -> Optional[str]
             n_x, phi_x = n_dir2, phi_dir2
 
         # Calcular espaçamentos
-        # Barras X → espaçamento ao longo de pilar_b
+        # Barras X → espaçamento ao longo de pilar_h (distribuídas nas faces Y)
         if n_x > 0:
-            espac_x_cm = int(round(dados_pilar['pilar_b'] / (n_x + 1)))
+            espac_x_cm = int(round(dados_pilar['pilar_h'] / (n_x + 1)))
         else:
             espac_x_cm = 0
 
-        # Barras Y → espaçamento ao longo de pilar_h
+        # Barras Y → espaçamento ao longo de pilar_b (distribuídas nas faces X)
         if n_y > 0:
-            espac_y_cm = int(round(dados_pilar['pilar_h'] / (n_y + 1)))
+            espac_y_cm = int(round(dados_pilar['pilar_b'] / (n_y + 1)))
         else:
             espac_y_cm = 0
 
@@ -243,7 +243,7 @@ def verificar_pilar_interativo(dados_pilar: Dict, config: Dict) -> Optional[str]
         # Direção X
         if n_x > 0 and d > 0:
             lb_x = calculo.calcular_lb(phi_x, fyk, fck)
-            comp_barra_x = calculo.calcular_comprimento_barra('X', localizacao, lb_x, d, dados_pilar['pilar_h'])
+            comp_barra_x = calculo.calcular_comprimento_barra('X', localizacao, lb_x, d, dados_pilar['pilar_b'])
             comp_barra_x_arred = calculo.arredondar_multiplo_5(comp_barra_x)
             comp_total_x = comp_barra_x_arred * n_x
         else:
@@ -253,7 +253,7 @@ def verificar_pilar_interativo(dados_pilar: Dict, config: Dict) -> Optional[str]
         # Direção Y
         if n_y > 0 and d > 0:
             lb_y = calculo.calcular_lb(phi_y, fyk, fck)
-            comp_barra_y = calculo.calcular_comprimento_barra('Y', localizacao, lb_y, d, dados_pilar['pilar_b'])
+            comp_barra_y = calculo.calcular_comprimento_barra('Y', localizacao, lb_y, d, dados_pilar['pilar_h'])
             comp_barra_y_arred = calculo.arredondar_multiplo_5(comp_barra_y)
             comp_total_y = comp_barra_y_arred * n_y
         else:
@@ -269,19 +269,19 @@ def verificar_pilar_interativo(dados_pilar: Dict, config: Dict) -> Optional[str]
 
         if n_x > 0:
             if d > 0:
-                print(f"   • Em X: {n_x}{formatacao.formatar_diametro(phi_x)} c/ {espac_x_cm}cm = {as_forn['as_x']:.3f} cm²    --> Comp. barra: {comp_barra_x_arred}cm | Comp. Total: {comp_total_x}cm")
+                print(f"   • Na direção X: {n_x}{formatacao.formatar_diametro(phi_x)} c/ {espac_x_cm}cm = {as_forn['as_x']:.3f} cm²    --> Comp. barra: {comp_barra_x_arred}cm | Comp. Total: {comp_total_x}cm")
             else:
-                print(f"   • Em X: {n_x}{formatacao.formatar_diametro(phi_x)} c/ {espac_x_cm}cm = {as_forn['as_x']:.3f} cm²")
+                print(f"   • Na direção X: {n_x}{formatacao.formatar_diametro(phi_x)} c/ {espac_x_cm}cm = {as_forn['as_x']:.3f} cm²")
         else:
-            print(f"   • Em X: (nenhuma)")
+            print(f"   • Na direção X: (nenhuma)")
 
         if n_y > 0:
             if d > 0:
-                print(f"   • Em Y: {n_y}{formatacao.formatar_diametro(phi_y)} c/ {espac_y_cm}cm = {as_forn['as_y']:.3f} cm²    --> Comp. barra: {comp_barra_y_arred}cm | Comp. Total: {comp_total_y}cm")
+                print(f"   • Na direção Y: {n_y}{formatacao.formatar_diametro(phi_y)} c/ {espac_y_cm}cm = {as_forn['as_y']:.3f} cm²    --> Comp. barra: {comp_barra_y_arred}cm | Comp. Total: {comp_total_y}cm")
             else:
-                print(f"   • Em Y: {n_y}{formatacao.formatar_diametro(phi_y)} c/ {espac_y_cm}cm = {as_forn['as_y']:.3f} cm²")
+                print(f"   • Na direção Y: {n_y}{formatacao.formatar_diametro(phi_y)} c/ {espac_y_cm}cm = {as_forn['as_y']:.3f} cm²")
         else:
-            print(f"   • Em Y: (nenhuma)")
+            print(f"   • Na direção Y: (nenhuma)")
 
         print(f"\n Sd/Rd = {verif['sd_rd']:.3f} ({verif['aproveitamento']:.1f}%)")
 
@@ -346,12 +346,12 @@ def gerar_relatorio_pilar(
 
     # Calcular espaçamentos
     if n_x > 0:
-        espac_x_cm = int(round(dados_pilar['pilar_b'] / (n_x + 1)))
+        espac_x_cm = int(round(dados_pilar['pilar_h'] / (n_x + 1)))
     else:
         espac_x_cm = 0
 
     if n_y > 0:
-        espac_y_cm = int(round(dados_pilar['pilar_h'] / (n_y + 1)))
+        espac_y_cm = int(round(dados_pilar['pilar_b'] / (n_y + 1)))
     else:
         espac_y_cm = 0
 
@@ -363,7 +363,7 @@ def gerar_relatorio_pilar(
     if n_x > 0:
         if d > 0:
             lb_x = calculo.calcular_lb(phi_x, fyk, fck)
-            comp_barra_x = calculo.calcular_comprimento_barra('X', localizacao, lb_x, d, dados_pilar['pilar_h'])
+            comp_barra_x = calculo.calcular_comprimento_barra('X', localizacao, lb_x, d, dados_pilar['pilar_b'])
             comp_barra_x_arred = calculo.arredondar_multiplo_5(comp_barra_x)
             comp_total_x = comp_barra_x_arred * n_x
             linhas.append(f"  Direção X: {n_x}{formatacao.formatar_diametro(phi_x)} c/ {espac_x_cm}cm = {as_fornecida['as_x']:.3f} cm² --> Comp. barra: {comp_barra_x_arred}cm | Comp. Total: {comp_total_x}cm")
@@ -375,7 +375,7 @@ def gerar_relatorio_pilar(
     if n_y > 0:
         if d > 0:
             lb_y = calculo.calcular_lb(phi_y, fyk, fck)
-            comp_barra_y = calculo.calcular_comprimento_barra('Y', localizacao, lb_y, d, dados_pilar['pilar_b'])
+            comp_barra_y = calculo.calcular_comprimento_barra('Y', localizacao, lb_y, d, dados_pilar['pilar_h'])
             comp_barra_y_arred = calculo.arredondar_multiplo_5(comp_barra_y)
             comp_total_y = comp_barra_y_arred * n_y
             linhas.append(f"  Direção Y: {n_y}{formatacao.formatar_diametro(phi_y)} c/ {espac_y_cm}cm = {as_fornecida['as_y']:.3f} cm² --> Comp. barra: {comp_barra_y_arred}cm | Comp. Total: {comp_total_y}cm")
